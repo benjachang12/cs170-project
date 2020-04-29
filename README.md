@@ -18,3 +18,10 @@ When writing inputs/outputs:
 - Make sure you use the functions `write_input_file` and `write_output_file` provided
 - Run the functions `read_input_file` and `read_output_file` to validate your files before submitting!
   - These are the functions run by the autograder to validate submissions
+
+## Submission Workflow
+Run: python prepare_submission.py outputs/ submission.json
+- The autograder looks for the file submission.json, so make sure you don’t change the last input to this script.
+
+Submit team.txt and submission.json to the Gradescope autograder
+
