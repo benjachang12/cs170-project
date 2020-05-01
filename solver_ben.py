@@ -72,7 +72,7 @@ def maximally_leafy_forest(G):
         d_prime = 0
         #for u, weights in G.adj[v].items():
         neighbors = list(G.neighbors(v))
-        sorted_neighbors = sorted(neighbors, key=lambda x: G.edges[(x,v)]['weight'])
+        sorted_neighbors = sorted(neighbors, key=lambda x: G[x][v]['weight'])
         for u in neighbors:
             if S[u] != S[v] and S[u] not in S_prime.values():
                 d_prime = d_prime + 1
@@ -80,7 +80,7 @@ def maximally_leafy_forest(G):
         if d[v] + d_prime >= 3:
             # for u, weights in S_prime.items():
             for u in S_prime.keys():
-                F.add_edge(u, v)
+                F.add_edge(u, v, weight=G[u][v]['weight'])
                 S.union(S[v], S[u])
                 d[u] = d[u] + 1
                 d[v] = d[v] + 1
@@ -104,14 +104,14 @@ def connect_disjoint_subtrees(G, F, S):
             edges_to_add.discard(e)
 
     # sort edges in ascending order by weight
-    edges_to_add = sorted(list(edges_to_add), key=lambda x: G.edges[x]['weight'])
+    edges_to_add = sorted(list(edges_to_add), key=lambda x: G[x[0]][x[1]]['weight'])
 
     # add edges using Kruskal's Algorithm
     T = F.copy()
     for e in edges_to_add:
         u, v = e[0], e[1]
         if S[u] != S[v]:
-            T.add_edge(*e)
+            T.add_edge(u, v, weight=G[u][v]['weight'])
             S.union(u, v)
             if T.number_of_edges() == G.number_of_nodes() - 1:
                 break
@@ -134,7 +134,7 @@ def prune_leaves(T, smart_pruning=True):
             else:
                 T_pruned_check = T_pruned.copy()
                 T_pruned_check.remove_node(v)
-                if average_pairwise_distance_fast(T_pruned_check) < average_pairwise_distance(T_pruned):
+                if average_pairwise_distance_fast(T_pruned_check) < average_pairwise_distance_fast(T_pruned):
                     T_pruned.remove_node(v)
 
     return T_pruned
@@ -193,9 +193,12 @@ if __name__ == '__main__':
         # path = "inputs\small-249.in"
         path = "inputs\large-15.in"
         G = read_input_file(path)
+        start_time = time.time()
         T = solve(G, visualize=True, verbose=True)
+        elapsed_time = time.time() - start_time
         assert is_valid_network(G, T)
-        print("Average  pairwise distance: {}".format(average_pairwise_distance(T)))
+        print('Total runtime:', elapsed_time, "(s)")
+        print("Average  pairwise distance: {}".format(average_pairwise_distance_fast(T)))
         write_output_file(T, 'out/test.out')
     else:
         # output_dir = "experiment_outputs/test1"
@@ -213,11 +216,11 @@ if __name__ == '__main__':
 
             assert is_valid_network(G, T)
 
-            cost = average_pairwise_distance(T)
+            cost = average_pairwise_distance_fast(T)
             pairwise_distances = np.append(pairwise_distances, cost)
             print("Finished solving:", graph_name)
-            # print('With total runtime:', elapsed_time, "(s)")
-            print("With average  pairwise distance: {}".format(cost), "\n")
+            print('Total runtime:', elapsed_time, "(s)")
+            print("Average pairwise distance: {}".format(cost), "\n")
 
             # write_output_file(T, f"{output_dir}/{graph_name}.out")
 
