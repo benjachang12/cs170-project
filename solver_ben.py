@@ -71,7 +71,9 @@ def maximally_leafy_forest(G):
         S_prime = {}
         d_prime = 0
         #for u, weights in G.adj[v].items():
-        for u in G.neighbors(v):
+        neighbors = list(G.neighbors(v))
+        sorted_neighbors = sorted(neighbors, key=lambda x: G.edges[(x,v)]['weight'])
+        for u in neighbors:
             if S[u] != S[v] and S[u] not in S_prime.values():
                 d_prime = d_prime + 1
                 S_prime[u] = S[u]
@@ -187,6 +189,7 @@ if __name__ == '__main__':
         # output_dir = "experiment_outputs/test1"
         output_dir = "phase2_outputs"
         input_dir = "inputs"
+        pairwise_distances = np.array([])
         for input_path in os.listdir(input_dir):
             graph_name = input_path.split(".")[0]
             G = read_input_file(f"{input_dir}/{input_path}")
@@ -198,10 +201,13 @@ if __name__ == '__main__':
 
             assert is_valid_network(G, T)
 
-            print("Finished solving:", graph_name)
-            print('With total runtime:', elapsed_time, "(s)")
-            print("With average  pairwise distance: {}".format(average_pairwise_distance(T)), "\n")
+            cost = average_pairwise_distance(T)
+            pairwise_distances = np.append(pairwise_distances, cost)
+            # print("Finished solving:", graph_name)
+            # print('With total runtime:', elapsed_time, "(s)")
+            print("With average  pairwise distance: {}".format(cost), "\n")
 
-            write_output_file(T, f"{output_dir}/{graph_name}.out")
+            # write_output_file(T, f"{output_dir}/{graph_name}.out")
 
+        print("Average of all scores:", np.mean(pairwise_distances))
         # TODO: write a save_to_csv function that saves a table of inputs and their runtime
