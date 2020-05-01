@@ -34,7 +34,9 @@ def solve(G, visualize=False, verbose=False):
     if visualize:
         visualize_results(G, F, T, T_pruned)
     if verbose:
+        MST = nx.maximum_spanning_tree(G)
         print("Cost of G:", average_pairwise_distance(G))
+        print("Cost of an MST:", average_pairwise_distance(MST))
         print("Cost of T:", average_pairwise_distance(T))
         print("Cost of T_pruned:", average_pairwise_distance(T_pruned))
 
@@ -118,14 +120,14 @@ def connect_disjoint_subtrees(G, F, S):
 
 def prune_leaves(T):
     """
-    Prunes the leaves of tree T ONLY if it reduces the average pairwise distance
+    Greedily prunes the leaves of tree T ONLY if it reduces the average pairwise distance
     :param T:
     :return:
     """
-
+    # TODO: need to check that pruning a leaf will decrease pairwise distance
     T_pruned = T.copy()
     for v in T.nodes:
-        if T.degree[v] == 1:
+        if T.degree[v] == 1 and T_pruned.number_of_nodes() > 1:
             T_pruned.remove_node(v)
     return T_pruned
 
@@ -172,33 +174,37 @@ def visualize_results(G, F, T, T_pruned):
 if __name__ == '__main__':
     # assert len(sys.argv) == 2
     # path = sys.argv[1]
-    # path = "phase1_input_graphs\\25.in"
-    # path = "inputs\small-249.in"
-    path = "inputs\small-225.in"
 
-    G = read_input_file(path)
-    T = solve(G, visualize=True, verbose=True)
-    assert is_valid_network(G, T)
-    print("Average  pairwise distance: {}".format(average_pairwise_distance(T)))
-    write_output_file(T, 'out/test.out')
+    just_testing_single_graph = False
 
-    # output_dir = "experiment_outputs/test1"
-    # input_dir = "inputs"
-    # for input_path in os.listdir(input_dir):
-    #     graph_name = input_path.split(".")[0]
-    #     G = read_input_file(f"{input_dir}/{input_path}")
-    #
-    #     # Solve problem and time the elapsed time
-    #     start_time = time.time()
-    #     T = solve(G)
-    #     elapsed_time = time.time() - start_time
-    #
-    #     assert is_valid_network(G, T)
-    #
-    #     print("Finished solving:", graph_name)
-    #     print('With total runtime:', elapsed_time, "(s)")
-    #     print("With average  pairwise distance: {}".format(average_pairwise_distance(T)), "\n")
-    #
-    #     write_output_file(T, f"{output_dir}/{graph_name}.out")
+    if just_testing_single_graph:
+        # path = "phase1_input_graphs\\25.in"
+        # path = "inputs\small-249.in"
+        path = "inputs\large-15.in"
+        G = read_input_file(path)
+        T = solve(G, visualize=True, verbose=True)
+        assert is_valid_network(G, T)
+        print("Average  pairwise distance: {}".format(average_pairwise_distance(T)))
+        write_output_file(T, 'out/test.out')
+    else:
+        # output_dir = "experiment_outputs/test1"
+        output_dir = "phase2_outputs"
+        input_dir = "inputs"
+        for input_path in os.listdir(input_dir):
+            graph_name = input_path.split(".")[0]
+            G = read_input_file(f"{input_dir}/{input_path}")
+
+            # Solve problem and time the elapsed time
+            start_time = time.time()
+            T = solve(G)
+            elapsed_time = time.time() - start_time
+
+            assert is_valid_network(G, T)
+
+            print("Finished solving:", graph_name)
+            print('With total runtime:', elapsed_time, "(s)")
+            print("With average  pairwise distance: {}".format(average_pairwise_distance(T)), "\n")
+
+            write_output_file(T, f"{output_dir}/{graph_name}.out")
 
         # TODO: write a save_to_csv function that saves a table of inputs and their runtime
