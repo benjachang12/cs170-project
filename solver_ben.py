@@ -7,8 +7,6 @@ from utils import is_valid_network, average_pairwise_distance
 import sys
 import os
 
-
-
 """
 CS170 Sp2020 Project: Cell Tower Network Design for Horizon Wireless
 
@@ -25,7 +23,7 @@ def solve(G, visualize=False, verbose=False):
     """
     # TODO: your code here!
     # build a spanning tree of n-vertex weighted graph
-    # TODO: implement algorithm from the paper
+
     F, S = maximally_leafy_forest(G)
     T = connect_disjoint_subtrees(G, F, S)
     T_pruned = prune_leaves(T)
@@ -158,7 +156,6 @@ def visualize_results(G, F, T, T_pruned):
     nx.draw(T, with_labels=True)
     plt.subplot(144)
     nx.draw(T_pruned, with_labels=True)
-
 
     plt.subplot(141).set_title('Graph')
     plt.subplot(142).set_title('Forest')
