@@ -26,11 +26,17 @@ def solve(G):
     # TODO: your code here!
     # build a spanning tree of n-vertex weighted graph
     # TODO: implement algorithm from the paper
-    F = maximally_leafy_forest(G)
-    T = connect_disjoint_subtrees(F)
+    F, S = maximally_leafy_forest(G)
+    T = connect_disjoint_subtrees(F, S)
+    T_pruned = prune_leaves(T)
 
+    # visualize and compare results
+    visualize_results(G, T, T_pruned)
+    print("Cost of G:", average_pairwise_distance(G))
+    print("Cost of T:", average_pairwise_distance(T))
+    print("Cost of T_pruned:", average_pairwise_distance(T_pruned))
     # T = nx.maximum_spanning_tree(G)
-    return T
+    return T_pruned
 
 def brute_force_search(G):
     """
@@ -46,6 +52,7 @@ def maximally_leafy_forest(G):
     where F is not a subgraph of any other leafy forest of G
     :param G:
     :return: F networkx.Graph
+             S disjoint subtrees
     """
     F = nx.Graph()  # empty graph
     F.add_nodes_from(G.nodes)
@@ -54,34 +61,39 @@ def maximally_leafy_forest(G):
     d = np.zeros(len(G.nodes))
     for v in G.nodes:
         S[v]
-    for v in G.nodes:
+
+
+    sorted_nodes = sorted(G.degree, key=lambda x: x[1], reverse=True)
+    # for v in G.nodes:
+    for v, deg in sorted_nodes:
         S_prime = {}
         d_prime = 0
-        for u, weights in G.adj[v].items():
+        #for u, weights in G.adj[v].items():
+        for u in G.neighbors(v):
             if S[u] != S[v] and S[u] not in S_prime.values():
                 d_prime = d_prime + 1
                 S_prime[u] = S[u]
         if d[v] + d_prime >= 3:
-            for u, weights in S_prime.items():
+            # for u, weights in S_prime.items():
+            for u in S_prime.keys():
                 F.add_edge(u, v)
                 S.union(S[v], S[u])
                 d[u] = d[u] + 1
                 d[v] = d[v] + 1
 
-    visualize_results(G, F)
+    return F, S
+
+
+def connect_disjoint_subtrees(F, S):
+    """
+    Add edges to maximally leafy forest F to make it a spanning tree T of G
+    :param F:
+    :return: T
+    """
+    meta_T = nx.MultiGraph()
+
 
     return F
-
-
-def connect_disjoint_subtrees(F):
-    """
-    Add edges to F to make it a spanning tree T of G
-    :param F:
-    :return:
-    """
-
-
-    pass
 
 def prune_leaves(T):
     """
@@ -89,7 +101,13 @@ def prune_leaves(T):
     :param T:
     :return:
     """
-    pass
+
+    T_pruned = T.copy()
+    for v in T.nodes:
+        if T.degree[v] == 1:
+            T_pruned.remove_node(v)
+    return T_pruned
+
 
 def k_star(G):
     """
@@ -100,7 +118,7 @@ def k_star(G):
     pass
 
 
-def visualize_results(G, T):
+def visualize_results(G, T, T_pruned):
     """
     Visualizes input graph and output tree side by side for easy comparison
 
@@ -109,13 +127,17 @@ def visualize_results(G, T):
     :return:
     """
 
-    plt.subplot(121)
+    plt.subplot(131)
     nx.draw(G, with_labels=True)
-    plt.subplot(122)
+    plt.subplot(132)
     nx.draw(T, with_labels=True)
+    plt.subplot(133)
+    nx.draw(T_pruned, with_labels=True)
 
-    plt.subplot(121).set_title('Graph')
-    plt.subplot(122).set_title('Tree')
+
+    plt.subplot(131).set_title('Graph')
+    plt.subplot(132).set_title('Tree')
+    plt.subplot(133).set_title('Pruned Tree')
     plt.show()
 
 # Here's an example of how to run your solver.
@@ -126,8 +148,7 @@ if __name__ == '__main__':
     # assert len(sys.argv) == 2
     # path = sys.argv[1]
     # path = "phase1_input_graphs\\25.in"
-    path = "inputs\medium-200.in"
-
+    path = "inputs\small-249.in"
 
     G = read_input_file(path)
     T = solve(G)
