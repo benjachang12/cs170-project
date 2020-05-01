@@ -33,32 +33,21 @@ def solve(G):
     """
 
     # TODO: your code here!
-    # def prune_leaves(T):
-    #     T = nx.minimum_spanning_tree(G)
-    #     #     a = [x for x in T.nodes() if T.out_degree(x)==0 and T.in_degree(x)==1]
-    #     #     for x in range(a):
-    #     #         T.remove_node(x)
-    #     #     return T
     T = nx.minimum_spanning_tree(G)
-    for x in T:
-        if T.degree[x] == 1:
-            T.remove_node(x)
+    X = list(T.nodes)
+    length = len(X)
+    U = T
+    for i in range(length):
+        a = X[i]
+        if T.degree[a] == 1:
+            U.remove_node(a)
+    T = U
     return T
 
 
 # Here's an example of how to run your solver.
 
 # Usage: python3 solver.py test.in
-
-# if __name__ == '__main__':
-# #     assert len(sys.argv) == 2
-# #     path = sys.argv[1]
-# #     G = read_input_file(path)
-# #     T = solve(G)
-# #     assert is_valid_network(G, T)
-# #     print("Average  pairwise distance: {}".format(average_pairwise_distance(T)))
-# #     write_output_file(T, 'out/test.out')-f
-
 
 if __name__ == "__main__":
     output_dir = "experiment_outputs/test2"
