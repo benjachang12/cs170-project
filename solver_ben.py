@@ -27,7 +27,7 @@ def solve(G):
     # build a spanning tree of n-vertex weighted graph
     # TODO: implement algorithm from the paper
     F = maximally_leafy_forest(G)
-
+    T = connect_disjoint_subtrees(F)
 
     # T = nx.maximum_spanning_tree(G)
     return T
@@ -42,7 +42,8 @@ def brute_force_search(G):
 def maximally_leafy_forest(G):
     """
     Computes the maximally leafy forest F for G
-
+    A maximally leafy forest F is a set of disjointly "leafy" subtrees of G,
+    where F is not a subgraph of any other leafy forest of G
     :param G:
     :return: F networkx.Graph
     """
@@ -59,7 +60,6 @@ def maximally_leafy_forest(G):
         for u, weights in G.adj[v].items():
             if S[u] != S[v] and S[u] not in S_prime.values():
                 d_prime = d_prime + 1
-                # S_prime[S[u]]
                 S_prime[u] = S[u]
         if d[v] + d_prime >= 3:
             for u, weights in S_prime.items():
@@ -67,8 +67,9 @@ def maximally_leafy_forest(G):
                 S.union(S[v], S[u])
                 d[u] = d[u] + 1
                 d[v] = d[v] + 1
-    nx.draw(G, with_labels=True)
-    nx.draw(F, with_labels=True)
+
+    visualize_results(G, F)
+
     return F
 
 
@@ -98,6 +99,25 @@ def k_star(G):
     """
     pass
 
+
+def visualize_results(G, T):
+    """
+    Visualizes input graph and output tree side by side for easy comparison
+
+    :param G: input Graph
+    :param T: output Tree
+    :return:
+    """
+
+    plt.subplot(121)
+    nx.draw(G, with_labels=True)
+    plt.subplot(122)
+    nx.draw(T, with_labels=True)
+
+    plt.subplot(121).set_title('Graph')
+    plt.subplot(122).set_title('Tree')
+    plt.show()
+
 # Here's an example of how to run your solver.
 
 # Usage: python3 solver.py test.in
@@ -105,9 +125,9 @@ def k_star(G):
 if __name__ == '__main__':
     # assert len(sys.argv) == 2
     # path = sys.argv[1]
+    # path = "phase1_input_graphs\\25.in"
+    path = "inputs\medium-200.in"
 
-    # path = "inputs\small-249.in"
-    path = "inputs\small-250.in"
 
     G = read_input_file(path)
     T = solve(G)
@@ -115,21 +135,23 @@ if __name__ == '__main__':
     print("Average  pairwise distance: {}".format(average_pairwise_distance(T)))
     write_output_file(T, 'out/test.out')
 
-    output_dir = "experiment_outputs/test1"
-    input_dir = "inputs"
-    for input_path in os.listdir(input_dir):
-        graph_name = input_path.split(".")[0]
-        G = read_input_file(f"{input_dir}/{input_path}")
-
-        # Solve problem and time the elapsed time
-        start_time = time.time()
-        T = solve(G)
-        elapsed_time = time.time() - start_time
-
-        print("Finished solving:", graph_name)
-        print('With total runtime:', elapsed_time, "(s)")
-        print("With average  pairwise distance: {}".format(average_pairwise_distance(T)), "\n")
-
-        write_output_file(T, f"{output_dir}/{graph_name}.out")
+    # output_dir = "experiment_outputs/test1"
+    # input_dir = "inputs"
+    # for input_path in os.listdir(input_dir):
+    #     graph_name = input_path.split(".")[0]
+    #     G = read_input_file(f"{input_dir}/{input_path}")
+    #
+    #     # Solve problem and time the elapsed time
+    #     start_time = time.time()
+    #     T = solve(G)
+    #     elapsed_time = time.time() - start_time
+    #
+    #     assert is_valid_network(G, T)
+    #
+    #     print("Finished solving:", graph_name)
+    #     print('With total runtime:', elapsed_time, "(s)")
+    #     print("With average  pairwise distance: {}".format(average_pairwise_distance(T)), "\n")
+    #
+    #     write_output_file(T, f"{output_dir}/{graph_name}.out")
 
         # TODO: write a save_to_csv function that saves a table of inputs and their runtime
