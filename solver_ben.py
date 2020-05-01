@@ -126,15 +126,17 @@ def prune_leaves(T, smart_pruning=True):
     """
     # TODO: need to check that pruning a leaf will decrease pairwise distance
     T_pruned = T.copy()
-    T_pruned_check = T.copy()
+
     for v in T.nodes:
         if T.degree[v] == 1 and T_pruned.number_of_nodes() > 1:
             if smart_pruning is False:
                 T_pruned.remove_node(v)
             else:
+                T_pruned_check = T_pruned.copy()
                 T_pruned_check.remove_node(v)
-                if average_pairwise_distance(T_pruned_check) < average_pairwise_distance(T_pruned):
+                if average_pairwise_distance_fast(T_pruned_check) < average_pairwise_distance(T_pruned):
                     T_pruned.remove_node(v)
+
     return T_pruned
 
 
