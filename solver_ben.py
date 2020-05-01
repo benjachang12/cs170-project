@@ -73,7 +73,7 @@ def maximally_leafy_forest(G):
         #for u, weights in G.adj[v].items():
         neighbors = list(G.neighbors(v))
         sorted_neighbors = sorted(neighbors, key=lambda x: G.edges[(x,v)]['weight'])
-        for u in neighbors:
+        for u in sorted_neighbors:
             if S[u] != S[v] and S[u] not in S_prime.values():
                 d_prime = d_prime + 1
                 S_prime[u] = S[u]
@@ -173,6 +173,10 @@ def visualize_results(G, F, T, T_pruned):
 if __name__ == '__main__':
     # assert len(sys.argv) == 2
     # path = sys.argv[1]
+
+    # Seed Random Datapoint Selection
+    seed_val = 420
+    np.random.seed(seed_val)
 
     just_testing_single_graph = False
 
