@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from parse import read_input_file, write_output_file
-from utils import is_valid_network, average_pairwise_distance
+from utils import is_valid_network, average_pairwise_distance, average_pairwise_distance_fast
 import sys
 import os
 
@@ -26,7 +26,7 @@ def solve(G, visualize=False, verbose=False):
 
     F, S = maximally_leafy_forest(G)
     T = connect_disjoint_subtrees(G, F, S)
-    T_pruned = prune_leaves(T)
+    T_pruned = prune_leaves(T, smart_pruning=True)
 
     # visualize and compare results
     if visualize:
@@ -73,7 +73,7 @@ def maximally_leafy_forest(G):
         #for u, weights in G.adj[v].items():
         neighbors = list(G.neighbors(v))
         sorted_neighbors = sorted(neighbors, key=lambda x: G.edges[(x,v)]['weight'])
-        for u in sorted_neighbors:
+        for u in neighbors:
             if S[u] != S[v] and S[u] not in S_prime.values():
                 d_prime = d_prime + 1
                 S_prime[u] = S[u]
@@ -118,7 +118,7 @@ def connect_disjoint_subtrees(G, F, S):
 
     return T
 
-def prune_leaves(T):
+def prune_leaves(T, smart_pruning=True):
     """
     Greedily prunes the leaves of tree T ONLY if it reduces the average pairwise distance
     :param T:
@@ -126,9 +126,15 @@ def prune_leaves(T):
     """
     # TODO: need to check that pruning a leaf will decrease pairwise distance
     T_pruned = T.copy()
+    T_pruned_check = T.copy()
     for v in T.nodes:
         if T.degree[v] == 1 and T_pruned.number_of_nodes() > 1:
-            T_pruned.remove_node(v)
+            if smart_pruning is False:
+                T_pruned.remove_node(v)
+            else:
+                T_pruned_check.remove_node(v)
+                if average_pairwise_distance(T_pruned_check) < average_pairwise_distance(T_pruned):
+                    T_pruned.remove_node(v)
     return T_pruned
 
 
@@ -207,7 +213,7 @@ if __name__ == '__main__':
 
             cost = average_pairwise_distance(T)
             pairwise_distances = np.append(pairwise_distances, cost)
-            # print("Finished solving:", graph_name)
+            print("Finished solving:", graph_name)
             # print('With total runtime:', elapsed_time, "(s)")
             print("With average  pairwise distance: {}".format(cost), "\n")
 
