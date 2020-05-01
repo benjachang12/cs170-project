@@ -31,7 +31,7 @@ def average_pairwise_distance(T):
     Returns:
         double: the average pairwise distance
     """
-    if not nx.is_connected(T):
+git     if not nx.is_connected(T):
         raise ValueError("Tree must be connected")
 
     if len(T) == 1: return 0

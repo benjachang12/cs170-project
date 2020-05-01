@@ -33,8 +33,16 @@ def solve(G):
     """
 
     # TODO: your code here!
+    # def prune_leaves(T):
+    #     T = nx.minimum_spanning_tree(G)
+    #     #     a = [x for x in T.nodes() if T.out_degree(x)==0 and T.in_degree(x)==1]
+    #     #     for x in range(a):
+    #     #         T.remove_node(x)
+    #     #     return T
     T = nx.minimum_spanning_tree(G)
-    delete = [n for n in T if T.degree(n) == 1]
+    for x in T:
+        if T.degree[x] == 1:
+            T.remove_node(x)
     return T
 
 
