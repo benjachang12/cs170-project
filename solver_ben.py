@@ -17,7 +17,7 @@ authors: Benjamin Chang, Kelvin Pang
 date: 4/29/2020
 """
 
-def solve(G):
+def solve(G, visualize=False, verbose=False):
     """
     Solves the problem statement
     :param G: networkx.Graph
@@ -27,15 +27,17 @@ def solve(G):
     # build a spanning tree of n-vertex weighted graph
     # TODO: implement algorithm from the paper
     F, S = maximally_leafy_forest(G)
-    T = connect_disjoint_subtrees(F, S)
+    T = connect_disjoint_subtrees(G, F, S)
     T_pruned = prune_leaves(T)
 
     # visualize and compare results
-    visualize_results(G, T, T_pruned)
-    print("Cost of G:", average_pairwise_distance(G))
-    print("Cost of T:", average_pairwise_distance(T))
-    print("Cost of T_pruned:", average_pairwise_distance(T_pruned))
-    # T = nx.maximum_spanning_tree(G)
+    if visualize:
+        visualize_results(G, F, T, T_pruned)
+    if verbose:
+        print("Cost of G:", average_pairwise_distance(G))
+        print("Cost of T:", average_pairwise_distance(T))
+        print("Cost of T_pruned:", average_pairwise_distance(T_pruned))
+
     return T_pruned
 
 def brute_force_search(G):
@@ -84,16 +86,35 @@ def maximally_leafy_forest(G):
     return F, S
 
 
-def connect_disjoint_subtrees(F, S):
+def connect_disjoint_subtrees(G, F, S):
     """
     Add edges to maximally leafy forest F to make it a spanning tree T of G
     :param F:
     :return: T
     """
-    meta_T = nx.MultiGraph()
+    edges_difference = G.edges() - F.edges()
 
+    # remove edges that connect vertices from same disjoint subtree
+    edges_to_add = edges_difference.copy()
+    for e in edges_difference:
+        u, v = e[0], e[1]
+        if S[u] == S[v]:
+            edges_to_add.discard(e)
 
-    return F
+    # sort edges in ascending order by weight
+    edges_to_add = sorted(list(edges_to_add), key=lambda x: G.edges[x]['weight'])
+
+    # add edges using Kruskal's Algorithm
+    T = F.copy()
+    for e in edges_to_add:
+        u, v = e[0], e[1]
+        if S[u] != S[v]:
+            T.add_edge(*e)
+            S.union(u, v)
+            if T.number_of_edges() == G.number_of_nodes() - 1:
+                break
+
+    return T
 
 def prune_leaves(T):
     """
@@ -118,7 +139,7 @@ def k_star(G):
     pass
 
 
-def visualize_results(G, T, T_pruned):
+def visualize_results(G, F, T, T_pruned):
     """
     Visualizes input graph and output tree side by side for easy comparison
 
@@ -127,18 +148,22 @@ def visualize_results(G, T, T_pruned):
     :return:
     """
 
-    plt.subplot(131)
+    plt.subplot(141)
     nx.draw(G, with_labels=True)
-    plt.subplot(132)
+    plt.subplot(142)
+    nx.draw(F, with_labels=True)
+    plt.subplot(143)
     nx.draw(T, with_labels=True)
-    plt.subplot(133)
+    plt.subplot(144)
     nx.draw(T_pruned, with_labels=True)
 
 
-    plt.subplot(131).set_title('Graph')
-    plt.subplot(132).set_title('Tree')
-    plt.subplot(133).set_title('Pruned Tree')
+    plt.subplot(141).set_title('Graph')
+    plt.subplot(142).set_title('Forest')
+    plt.subplot(143).set_title('Tree')
+    plt.subplot(144).set_title('Pruned Tree')
     plt.show()
+
 
 # Here's an example of how to run your solver.
 
@@ -148,10 +173,11 @@ if __name__ == '__main__':
     # assert len(sys.argv) == 2
     # path = sys.argv[1]
     # path = "phase1_input_graphs\\25.in"
-    path = "inputs\small-249.in"
+    # path = "inputs\small-249.in"
+    path = "inputs\small-225.in"
 
     G = read_input_file(path)
-    T = solve(G)
+    T = solve(G, visualize=True, verbose=True)
     assert is_valid_network(G, T)
     print("Average  pairwise distance: {}".format(average_pairwise_distance(T)))
     write_output_file(T, 'out/test.out')
