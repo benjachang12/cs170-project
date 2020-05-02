@@ -2,6 +2,7 @@ import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import random
 from parse import read_input_file, write_output_file
 from utils import is_valid_network, average_pairwise_distance, average_pairwise_distance_fast
 import sys
@@ -10,10 +11,10 @@ import os
 """
 CS170 Sp2020 Project: Cell Tower Network Design for Horizon Wireless
 
-
 authors: Benjamin Chang, Kelvin Pang 
 date: 4/29/2020
 """
+
 
 def solve(G, visualize=False, verbose=False):
     """
@@ -25,11 +26,18 @@ def solve(G, visualize=False, verbose=False):
     :param G: networkx.Graph
     :return: T networkx.Graph
     """
-    # TODO: your code here!
 
     F, S = maximally_leafy_forest(G)
     leafyT = connect_disjoint_subtrees(G, F, S)
     leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
+
+    F_asc, S_asc = maximally_leafy_forest(G, neighbor_sort="ascending")
+    leafyT_asc = connect_disjoint_subtrees(G, F_asc, S_asc)
+    leafyT_asc_pruned = prune_leaves(leafyT_asc, smart_pruning=True)
+
+    F_desc, S_desc = maximally_leafy_forest(G, neighbor_sort="descending")
+    leafyT_desc = connect_disjoint_subtrees(G, F_desc, S_desc)
+    leafyT_desc_pruned = prune_leaves(leafyT_desc, smart_pruning=True)
 
     minST = nx.minimum_spanning_tree(G)
     maxST = nx.maximum_spanning_tree(G)
@@ -38,7 +46,7 @@ def solve(G, visualize=False, verbose=False):
 
 
     # Take the minimum over all these different approaches
-    all_solutions = [leafyT_pruned, minST_pruned, maxST_pruned]
+    all_solutions = [leafyT_pruned, leafyT_asc_pruned, leafyT_desc_pruned, minST_pruned, maxST_pruned]
     all_costs = []
     for tree in all_solutions:
         all_costs.append(average_pairwise_distance_fast(tree))
@@ -58,6 +66,7 @@ def solve(G, visualize=False, verbose=False):
 
     return min_solution
 
+
 def brute_force_search(G):
     """
 
@@ -65,12 +74,14 @@ def brute_force_search(G):
     :return:
     """
 
-def maximally_leafy_forest(G):
+
+def maximally_leafy_forest(G, neighbor_sort=None):
     """
     Computes the maximally leafy forest F for G
     A maximally leafy forest F is a set of disjointly "leafy" subtrees of G,
     where F is not a subgraph of any other leafy forest of G
     :param G:
+    :param neighbor_sort:
     :return: F networkx.Graph
              S disjoint subtrees
     """
@@ -89,8 +100,15 @@ def maximally_leafy_forest(G):
         S_prime = {}
         d_prime = 0
         neighbors = list(G.neighbors(v))
-        sorted_neighbors_asc = sorted(neighbors, key=lambda x: G[x][v]['weight'])
-        sorted_neighbors_desc = sorted(neighbors, key=lambda x: G[x][v]['weight'], reverse=True)
+
+        if neighbor_sort is not None:
+            if neighbor_sort is "ascending":
+                neighbors = sorted(neighbors, key=lambda x: G[x][v]['weight'])
+            elif neighbor_sort is "descending":
+                neighbors = sorted(neighbors, key=lambda x: G[x][v]['weight'], reverse=True)
+            elif neighbor_sort is "random":
+                neighbors = random.shuffle(neighbors)
+
         for u in neighbors:
             if S[u] != S[v] and S[u] not in S_prime.values():
                 d_prime = d_prime + 1
@@ -108,7 +126,9 @@ def maximally_leafy_forest(G):
 def connect_disjoint_subtrees(G, F, S):
     """
     Add edges to maximally leafy forest F to make it a spanning tree T of G
+    :param G:
     :param F:
+    :param S:
     :return: T
     """
     edges_difference = G.edges() - F.edges()
@@ -135,10 +155,12 @@ def connect_disjoint_subtrees(G, F, S):
 
     return T
 
+
 def prune_leaves(T, smart_pruning=True):
     """
     Greedily prunes the leaves of tree T ONLY if it reduces the average pairwise distance
     :param T:
+    :param smart_pruning:
     :return:
     """
 
@@ -221,8 +243,9 @@ if __name__ == '__main__':
 
     # Seed Random Datapoint Selection
     seed_val = 420
-    np.random.seed(seed_val)
+    random.seed(seed_val)
 
+    generate_outputs = False
     just_testing_single_graph = False
 
     if just_testing_single_graph:
@@ -259,7 +282,8 @@ if __name__ == '__main__':
             print('Total runtime:', elapsed_time, "(s)")
             print("Average pairwise distance: {}".format(cost), "\n")
 
-            write_output_file(T, f"{output_dir}/{graph_name}.out")
+            if generate_outputs:
+                write_output_file(T, f"{output_dir}/{graph_name}.out")
 
         print("Average Cost of all scores:", np.mean(pairwise_distances))
         # TODO: write a save_to_csv function that saves a table of inputs and their runtime
