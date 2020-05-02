@@ -17,12 +17,15 @@ date: 4/29/2020
 
 def solve(G, visualize=False, verbose=False):
     """
-    Solves the problem statement
+    Solves the problem statement by computing the minimum over the following possible solutions:
+        - G (smart pruned)
+        - Maximum Spanning Tree (smart pruned)
+        - Minimum Spanning Tree (smart pruned)
+        -
     :param G: networkx.Graph
     :return: T networkx.Graph
     """
     # TODO: your code here!
-    # build a spanning tree of n-vertex weighted graph
 
     F, S = maximally_leafy_forest(G)
     T = connect_disjoint_subtrees(G, F, S)
@@ -30,13 +33,18 @@ def solve(G, visualize=False, verbose=False):
 
     # visualize and compare results
     if visualize:
-        visualize_results(G, F, T, T_pruned)
+        visualize_results(G, F, T, T_pruned, include_edge_weights=True)
     if verbose:
         MST = nx.maximum_spanning_tree(G)
         print("Cost of G:", average_pairwise_distance(G))
         print("Cost of an MST:", average_pairwise_distance(MST))
         print("Cost of T:", average_pairwise_distance(T))
         print("Cost of T_pruned:", average_pairwise_distance(T_pruned))
+
+    #
+    # all_solutions = []
+    # all_solutions.append(T_pruned)
+    # all_solutions.append(T_pruned)
 
     return T_pruned
 
@@ -64,21 +72,20 @@ def maximally_leafy_forest(G):
     for v in G.nodes:
         S[v]
 
-
+    # Branch from vertices with highest degree first
     sorted_nodes = sorted(G.degree, key=lambda x: x[1], reverse=True)
-    # for v in G.nodes:
+
     for v, deg in sorted_nodes:
         S_prime = {}
         d_prime = 0
-        #for u, weights in G.adj[v].items():
         neighbors = list(G.neighbors(v))
-        sorted_neighbors = sorted(neighbors, key=lambda x: G[x][v]['weight'])
+        sorted_neighbors_asc = sorted(neighbors, key=lambda x: G[x][v]['weight'])
+        sorted_neighbors_desc = sorted(neighbors, key=lambda x: G[x][v]['weight'], reverse=True)
         for u in neighbors:
             if S[u] != S[v] and S[u] not in S_prime.values():
                 d_prime = d_prime + 1
                 S_prime[u] = S[u]
         if d[v] + d_prime >= 3:
-            # for u, weights in S_prime.items():
             for u in S_prime.keys():
                 F.add_edge(u, v, weight=G[u][v]['weight'])
                 S.union(S[v], S[u])
@@ -124,7 +131,7 @@ def prune_leaves(T, smart_pruning=True):
     :param T:
     :return:
     """
-    # TODO: need to check that pruning a leaf will decrease pairwise distance
+
     T_pruned = T.copy()
 
     for v in T.nodes:
@@ -149,7 +156,7 @@ def k_star(G):
     pass
 
 
-def visualize_results(G, F, T, T_pruned):
+def visualize_results(G, F, T, T_pruned, include_edge_weights=False):
     """
     Visualizes input graph and output tree side by side for easy comparison
 
@@ -157,15 +164,35 @@ def visualize_results(G, F, T, T_pruned):
     :param T: output Tree
     :return:
     """
+    if include_edge_weights is True:
+        plt.subplot(141)
+        pos = nx.spring_layout(G)
+        nx.draw(G, pos=pos, with_labels=True)
+        nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=nx.get_edge_attributes(G, 'weight'))
 
-    plt.subplot(141)
-    nx.draw(G, with_labels=True)
-    plt.subplot(142)
-    nx.draw(F, with_labels=True)
-    plt.subplot(143)
-    nx.draw(T, with_labels=True)
-    plt.subplot(144)
-    nx.draw(T_pruned, with_labels=True)
+        plt.subplot(142)
+        pos = nx.spring_layout(F)
+        nx.draw(F, pos=pos, with_labels=True)
+        nx.draw_networkx_edge_labels(F, pos=pos, edge_labels=nx.get_edge_attributes(F, 'weight'))
+
+        plt.subplot(143)
+        pos = nx.spring_layout(T)
+        nx.draw(T, pos=pos, with_labels=True)
+        nx.draw_networkx_edge_labels(T, pos=pos, edge_labels=nx.get_edge_attributes(T, 'weight'))
+
+        plt.subplot(144)
+        pos = nx.spring_layout(T_pruned)
+        nx.draw(T_pruned, pos=pos, with_labels=True)
+        nx.draw_networkx_edge_labels(T_pruned, pos=pos, edge_labels=nx.get_edge_attributes(T_pruned, 'weight'))
+    else:
+        plt.subplot(141)
+        nx.draw(G, with_labels=True)
+        plt.subplot(142)
+        nx.draw(F, with_labels=True)
+        plt.subplot(143)
+        nx.draw(T, with_labels=True)
+        plt.subplot(144)
+        nx.draw(T_pruned, with_labels=True)
 
     plt.subplot(141).set_title('Graph')
     plt.subplot(142).set_title('Forest')
@@ -191,7 +218,7 @@ if __name__ == '__main__':
     if just_testing_single_graph:
         # path = "phase1_input_graphs\\25.in"
         # path = "inputs\small-249.in"
-        path = "inputs\large-15.in"
+        path = "inputs\small-8.in"
         G = read_input_file(path)
         start_time = time.time()
         T = solve(G, visualize=True, verbose=True)
@@ -199,7 +226,7 @@ if __name__ == '__main__':
         assert is_valid_network(G, T)
         print('Total runtime:', elapsed_time, "(s)")
         print("Average  pairwise distance: {}".format(average_pairwise_distance_fast(T)))
-        write_output_file(T, 'out/test.out')
+        # write_output_file(T, 'out/test.out')
     else:
         # output_dir = "experiment_outputs/test1"
         output_dir = "phase2_outputs"
@@ -224,5 +251,5 @@ if __name__ == '__main__':
 
             # write_output_file(T, f"{output_dir}/{graph_name}.out")
 
-        print("Average of all scores:", np.mean(pairwise_distances))
+        print("Average Cost of all scores:", np.mean(pairwise_distances))
         # TODO: write a save_to_csv function that saves a table of inputs and their runtime
