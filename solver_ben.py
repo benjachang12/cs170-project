@@ -56,9 +56,6 @@ def solve(G, visualize=False, verbose=False):
         print("Cost of MinST_pruned:", average_pairwise_distance_fast(minST_pruned))
         print("Cost of MaxST_pruned:", average_pairwise_distance_fast(maxST_pruned))
 
-
-
-
     return min_solution
 
 def brute_force_search(G):
@@ -262,7 +259,7 @@ if __name__ == '__main__':
             print('Total runtime:', elapsed_time, "(s)")
             print("Average pairwise distance: {}".format(cost), "\n")
 
-            # write_output_file(T, f"{output_dir}/{graph_name}.out")
+            write_output_file(T, f"{output_dir}/{graph_name}.out")
 
         print("Average Cost of all scores:", np.mean(pairwise_distances))
         # TODO: write a save_to_csv function that saves a table of inputs and their runtime
