@@ -28,25 +28,38 @@ def solve(G, visualize=False, verbose=False):
     # TODO: your code here!
 
     F, S = maximally_leafy_forest(G)
-    T = connect_disjoint_subtrees(G, F, S)
-    T_pruned = prune_leaves(T, smart_pruning=True)
+    leafyT = connect_disjoint_subtrees(G, F, S)
+    leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
+
+    minST = nx.minimum_spanning_tree(G)
+    maxST = nx.maximum_spanning_tree(G)
+    minST_pruned = prune_leaves(minST, smart_pruning=True)
+    maxST_pruned = prune_leaves(maxST, smart_pruning=True)
+
+
+    # Take the minimum over all these different approaches
+    all_solutions = [leafyT_pruned, minST_pruned, maxST_pruned]
+    all_costs = []
+    for tree in all_solutions:
+        all_costs.append(average_pairwise_distance_fast(tree))
+    min_solution = all_solutions[all_costs.index(min(all_costs))]
 
     # visualize and compare results
     if visualize:
-        visualize_results(G, F, T, T_pruned, include_edge_weights=True)
+        visualize_results(G, F, leafyT, leafyT_pruned, include_edge_weights=True)
     if verbose:
-        MST = nx.maximum_spanning_tree(G)
-        print("Cost of G:", average_pairwise_distance(G))
-        print("Cost of an MST:", average_pairwise_distance(MST))
-        print("Cost of T:", average_pairwise_distance(T))
-        print("Cost of T_pruned:", average_pairwise_distance(T_pruned))
+        print("Cost of G:", average_pairwise_distance_fast(G))
+        print("Cost of leafyT:", average_pairwise_distance_fast(leafyT))
+        print("Cost of leafyT_pruned:", average_pairwise_distance_fast(leafyT_pruned))
+        print("Cost of MinST:", average_pairwise_distance_fast(minST))
+        print("Cost of MaxST:", average_pairwise_distance_fast(maxST))
+        print("Cost of MinST_pruned:", average_pairwise_distance_fast(minST_pruned))
+        print("Cost of MaxST_pruned:", average_pairwise_distance_fast(maxST_pruned))
 
-    #
-    # all_solutions = []
-    # all_solutions.append(T_pruned)
-    # all_solutions.append(T_pruned)
 
-    return T_pruned
+
+
+    return min_solution
 
 def brute_force_search(G):
     """
