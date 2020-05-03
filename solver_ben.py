@@ -19,7 +19,7 @@ date: 4/29/2020
 """
 
 
-def solve(G, alpha_range=np.arange(0,1001,10), verbose=False):
+def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False):
     """
     Solves the problem statement by computing the minimum over the following possible solutions:
         - G (smart pruned)
@@ -32,20 +32,29 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False):
 
     # Generate leafyT solutions (with root priority heuristics and varying values of alpha)
     # Note: when alpha = 0, this is equivalent to no root priority heuristic
-    all_solutions = []
-    alpha_costs = []
-    for alpha in reversed(alpha_range):
+    def maximally_leafy_tree(alpha):
         F, S = maximally_leafy_forest(G, neighbor_sort="ascending", use_root_priority=True, alpha=alpha)
         leafyT = connect_disjoint_subtrees(G, F, S)
         leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
-        if verbose:
-            alpha_costs.append(average_pairwise_distance_fast(leafyT_pruned))
-        all_solutions.append(leafyT_pruned)
+        return leafyT_pruned
+
+    all_solutions = []
+    all_costs = []
+
+    if parallel:
+        num_cores = multiprocessing.cpu_count()
+        all_solutions = Parallel(n_jobs=num_cores)(delayed(maximally_leafy_tree)(alpha) for alpha in alpha_range)
+        all_costs = Parallel(n_jobs=num_cores)(delayed(average_pairwise_distance_fast)(sol) for sol in all_solutions)
+    else:
+        for alpha in alpha_range:
+            sol = maximally_leafy_tree(alpha)
+            all_costs.append(average_pairwise_distance_fast(sol))
+            all_solutions.append(sol)
 
     if verbose:
-        alpha_costs.reverse()
+        # Plot heuristic hyperparameter tuning graph
         plt.figure()
-        plt.plot(alpha_range, alpha_costs)
+        plt.plot(alpha_range, all_costs)
         plt.xlabel("alpha"), plt.ylabel("Cost")
         plt.title("Cost vs Alpha (neighbors sorted ascending)")
         plt.show(block=False)
@@ -57,60 +66,26 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False):
     maxST_pruned = prune_leaves(maxST, smart_pruning=True)
     all_solutions.append(minST_pruned)
     all_solutions.append(maxST_pruned)
+    all_costs.append(average_pairwise_distance_fast(minST_pruned))
+    all_costs.append(average_pairwise_distance_fast(maxST_pruned))
 
     # Take the minimum over all these different approaches
-    all_costs = []
-    for solution in all_solutions:
-        all_costs.append(average_pairwise_distance_fast(solution))
     min_solution = all_solutions[all_costs.index(min(all_costs))]
 
-    # Visualize and compare results
-    # Note this only shows the last leafyT (which is when alpha=0)
+    # Visualize and compare results (only first leafyT shown, when alpha=0)
     if verbose:
+        # Print costs of solutions
+        leafyT_pruned = all_solutions[0]
         print("Cost of G:", average_pairwise_distance_fast(G))
-        print("Cost of leafyT:", average_pairwise_distance_fast(leafyT))
         print("Cost of leafyT_pruned:", average_pairwise_distance_fast(leafyT_pruned))
-        print("Cost of MinST:", average_pairwise_distance_fast(minST))
-        print("Cost of MaxST:", average_pairwise_distance_fast(maxST))
         print("Cost of MinST_pruned:", average_pairwise_distance_fast(minST_pruned))
         print("Cost of MaxST_pruned:", average_pairwise_distance_fast(maxST_pruned))
 
+        # Visualize graphs of solutions
         visualize_graph(G, title="Input Graph")
-        visualize_graph(F, title="Leafy Forest")
-        visualize_graph(leafyT, title="Leafy Tree")
         visualize_graph(leafyT_pruned, title="Pruned Leafy Tree")
         visualize_graph(minST_pruned, title="Pruned MinST")
         visualize_graph(maxST_pruned, title="Pruned MaxST")
-
-    return min_solution
-
-
-def solve_parallel(G, alpha_range=np.arange(0, 1001, 10)):
-    """
-    Experimental Parallelized Version with joblib and multiprocessing
-    :param G:
-    :param alpha_range:
-    :return:
-    """
-    num_cores = multiprocessing.cpu_count()
-
-    def fast_leafyT(alpha):
-        F, S = maximally_leafy_forest(G, neighbor_sort="ascending", use_root_priority=True, alpha=alpha)
-        leafyT = connect_disjoint_subtrees(G, F, S)
-        leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
-        return leafyT_pruned
-
-    all_solutions = Parallel(n_jobs=num_cores)(delayed(fast_leafyT)(alpha) for alpha in alpha_range)
-    all_costs = Parallel(n_jobs=num_cores)(delayed(average_pairwise_distance_fast)(sol) for sol in all_solutions)
-
-    minST_pruned = prune_leaves(nx.minimum_spanning_tree(G), smart_pruning=True)
-    maxST_pruned = prune_leaves(nx.maximum_spanning_tree(G), smart_pruning=True)
-
-    all_solutions.append(minST_pruned)
-    all_solutions.append(maxST_pruned)
-    all_costs.append(average_pairwise_distance_fast(minST_pruned))
-    all_costs.append(average_pairwise_distance_fast(maxST_pruned))
-    min_solution = all_solutions[all_costs.index(min(all_costs))]
 
     return min_solution
 
@@ -261,8 +236,8 @@ if __name__ == '__main__':
     #     Solver Settings (CHANGE ME)         #
     ###########################################
     test_single_graph = False
-    generate_outputs = True
-    alpha_range = np.arange(0, 2010, 10)
+    generate_outputs = False
+    alpha_range = np.arange(0, 100, 10)
 
 
     # Seed Random Datapoint Selection
@@ -276,17 +251,17 @@ if __name__ == '__main__':
 
         # Parallel Solver
         start_time = time.time()
-        T_parallel = solve_parallel(G, alpha_range=alpha_range)
+        T_parallel = solve(G, alpha_range=alpha_range, parallel=True)
         elapsed_time = time.time() - start_time
         print("Total runtime (Parallel):", elapsed_time, "(s)")
 
         # Regular Solver
         start_time = time.time()
-        T = solve(G, alpha_range=alpha_range, verbose=False)
+        T = solve(G, alpha_range=alpha_range)
         elapsed_time = time.time() - start_time
         print('Total runtime (Regular):', elapsed_time, "(s)")
 
-        # Regular Solver with verbose outputs
+        # Rerun Regular Solver with verbose outputs
         T = solve(G, alpha_range=alpha_range, verbose=True)
 
         assert is_valid_network(G, T_parallel)
@@ -307,7 +282,7 @@ if __name__ == '__main__':
         for input_path in os.listdir(input_dir):
             graph_name = input_path.split(".")[0]
             G = read_input_file(f"{input_dir}/{input_path}")
-            T = solve_parallel(G, alpha_range=alpha_range)
+            T = solve(G, alpha_range=alpha_range, parallel=True)
             assert is_valid_network(G, T)
 
             cost = average_pairwise_distance_fast(T)
