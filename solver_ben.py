@@ -19,8 +19,15 @@ authors: Benjamin Chang, Kelvin Pang
 date: 4/29/2020
 """
 
+# Counter Global Variables
+COUNT_LEAFYT = 0
+COUNT_MINST = 0
+COUNT_MAXST = 0
+COUNT_VC = 0
+COUNT_DS = 0
 
-def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False):
+
+def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False, count=False):
     """
     Solves the problem statement by computing the minimum over the following possible solutions:
         - G (smart pruned)
@@ -103,6 +110,20 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False):
         visualize_graph(maxST_pruned, title="Pruned MaxST")
         visualize_graph(minVCST, title="MinVCST")
         visualize_graph(minDSST, title="MinDSST")
+
+    # Keep a counter of which solutions were chosen as minimum
+    if count:
+        global COUNT_LEAFYT, COUNT_MINST, COUNT_MAXST, COUNT_VC, COUNT_DS
+        if min_solution == minST_pruned:
+            COUNT_MINST = COUNT_MINST + 1
+        elif min_solution == maxST_pruned:
+            COUNT_MAXST = COUNT_MAXST + 1
+        elif min_solution == minVCST:
+            COUNT_VC = COUNT_VC + 1
+        elif min_solution == minDSST:
+            COUNT_DS = COUNT_DS + 1
+        else:
+            COUNT_LEAFYT = COUNT_LEAFYT + 1
 
     return min_solution
 
@@ -209,14 +230,14 @@ def min_dominating_set_spanning_tree(G):
     :return:
     """
     minDS = nx.Graph()
+    if G.number_of_nodes() == 1:
+        minDS.add_nodes_from(G.nodes)
     S = nx.utils.UnionFind()
     edges_to_add = approximation.min_edge_dominating_set(G)
-
     for e in edges_to_add:
         u, v = e[0], e[1]
         S.union(S[v], S[u])
         minDS.add_edge(u, v, weight=G[u][v]['weight'])
-
     minDSST = connect_disjoint_subtrees(G, minDS, S)
     return minDSST
 
@@ -284,32 +305,29 @@ def visualize_graph(G, title="untitled", layout="spring_layout"):
     """
     plt.figure()
     plt.title(title)
-
     if layout is "spring_layout":
         pos = nx.spring_layout(G)
     elif layout is "planar_layout":
         pos = nx.planar_layout(G)
     elif layout is "random_layout":
         pos = nx.random_layout(G)
-
     nx.draw(G, pos=pos, with_labels=True)
     nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=nx.get_edge_attributes(G, 'weight'))
     plt.show(block=False)
 
 
 # Here's an example of how to run your solver.
-
 # Usage: python3 solver.py test.in
-
 if __name__ == '__main__':
 
     ###########################################
     #     Solver Settings (CHANGE ME)         #
     ###########################################
-    test_single_graph = True
-    generate_outputs = False
-    alpha_range = np.arange(0, 10, 10)
-
+    test_single_graph = False           # True if testing only single input, False if testing ALL inputs
+    generate_outputs = False            # True if generating outputs for submission
+    track_solution_count = True         # True if keep track of solution type counter
+    alpha_range = np.arange(0, 10, 10)      # Range of alpha values to iterate over for hyperparameter tuning
+    ###########################################
 
     # Seed Random Datapoint Selection
     seed_val = 420
@@ -333,14 +351,14 @@ if __name__ == '__main__':
         print('Total runtime (Regular):', elapsed_time, "(s)")
 
         # Rerun Regular Solver with verbose outputs
-        T = solve(G, alpha_range=alpha_range, verbose=True)
+        T = solve(G, alpha_range=alpha_range, verbose=True, count=track_solution_count)
 
         assert is_valid_network(G, T_parallel)
         assert is_valid_network(G, T)
         # print('Total runtime:', elapsed_time, "(s)")
         print("Average pairwise distance (Parallel): {}".format(average_pairwise_distance_fast(T_parallel)))
         print("Average pairwise distance (Regular): {}".format(average_pairwise_distance_fast(T)))
-        plt.show()
+
 
     else:
         # output_dir = "experiment_outputs/test1"
@@ -353,7 +371,7 @@ if __name__ == '__main__':
         for input_path in os.listdir(input_dir):
             graph_name = input_path.split(".")[0]
             G = read_input_file(f"{input_dir}/{input_path}")
-            T = solve(G, alpha_range=alpha_range, parallel=True)
+            T = solve(G, alpha_range=alpha_range, parallel=True, count=track_solution_count)
             assert is_valid_network(G, T)
 
             cost = average_pairwise_distance_fast(T)
@@ -367,3 +385,8 @@ if __name__ == '__main__':
         elapsed_time = time.time() - start_time
         print('Total runtime:', elapsed_time, "(s)")
         print("Average Cost of all scores:", np.mean(pairwise_distances))
+
+    # global COUNT_LEAFYT, COUNT_MINST, COUNT_MAXST, COUNT_VC, COUNT_DS
+    print("SOLUTION COUNTER:")
+    print("LeafyT:", COUNT_LEAFYT, "MinST:", COUNT_MINST, "MaxST:", COUNT_MAXST, "VC:", COUNT_VC, "DS:", COUNT_DS)
+    plt.show()
