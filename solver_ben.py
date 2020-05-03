@@ -16,7 +16,7 @@ date: 4/29/2020
 """
 
 
-def solve(G, visualize=False, verbose=False):
+def solve(G, visualize=False, verbose=False, generate_alpha_plot=False):
     """
     Solves the problem statement by computing the minimum over the following possible solutions:
         - G (smart pruned)
@@ -27,34 +27,47 @@ def solve(G, visualize=False, verbose=False):
     :return: T networkx.Graph
     """
 
-    F, S = maximally_leafy_forest(G)
-    leafyT = connect_disjoint_subtrees(G, F, S)
-    leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
-
-    F_asc, S_asc = maximally_leafy_forest(G, neighbor_sort="ascending")
-    leafyT_asc = connect_disjoint_subtrees(G, F_asc, S_asc)
-    leafyT_asc_pruned = prune_leaves(leafyT_asc, smart_pruning=True)
-
-    F_desc, S_desc = maximally_leafy_forest(G, neighbor_sort="descending")
-    leafyT_desc = connect_disjoint_subtrees(G, F_desc, S_desc)
-    leafyT_desc_pruned = prune_leaves(leafyT_desc, smart_pruning=True)
-
+    # Generate minST and maxST solutions
     minST = nx.minimum_spanning_tree(G)
     maxST = nx.maximum_spanning_tree(G)
     minST_pruned = prune_leaves(minST, smart_pruning=True)
     maxST_pruned = prune_leaves(maxST, smart_pruning=True)
 
+    # Generate leafyT solution (without using root priority heuristic)
+    F, S = maximally_leafy_forest(G, neighbor_sort="ascending")
+    leafyT = connect_disjoint_subtrees(G, F, S)
+    leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
+
+    # Generate leafyT solutions (with root priority heuristics and varying values of alpha)
+    alpha_range = np.arange(0,1001,10)   # range of alpha values to try
+    all_solutions = []
+    alpha_costs = []
+    for alpha in alpha_range:
+        F_alpha, S_alpha = maximally_leafy_forest(G, neighbor_sort="ascending", use_root_priority=True, alpha=alpha)
+        leafyT_alpha = connect_disjoint_subtrees(G, F_alpha, S_alpha)
+        leafyT_alpha_pruned = prune_leaves(leafyT_alpha, smart_pruning=True)
+
+        if generate_alpha_plot:
+            alpha_costs.append(average_pairwise_distance_fast(leafyT_alpha_pruned))
+
+        all_solutions.append(leafyT_alpha_pruned)
+
+    if generate_alpha_plot:
+        plt.plot(alpha_range, alpha_costs)
+        plt.xlabel("alpha"), plt.ylabel("Cost")
+        plt.title("Cost vs Alpha (neighbors sorted ascending)")
+        plt.show()
 
     # Take the minimum over all these different approaches
-    all_solutions = [leafyT_pruned, leafyT_asc_pruned, leafyT_desc_pruned, minST_pruned, maxST_pruned]
+    all_solutions.append(leafyT_pruned)
+    all_solutions.append(minST_pruned)
+    all_solutions.append(maxST_pruned)
     all_costs = []
-    for tree in all_solutions:
-        all_costs.append(average_pairwise_distance_fast(tree))
+    for solution in all_solutions:
+        all_costs.append(average_pairwise_distance_fast(solution))
     min_solution = all_solutions[all_costs.index(min(all_costs))]
 
     # visualize and compare results
-    if visualize:
-        visualize_results(G, F, leafyT, leafyT_pruned, include_edge_weights=True)
     if verbose:
         print("Cost of G:", average_pairwise_distance_fast(G))
         print("Cost of leafyT:", average_pairwise_distance_fast(leafyT))
@@ -63,29 +76,26 @@ def solve(G, visualize=False, verbose=False):
         print("Cost of MaxST:", average_pairwise_distance_fast(maxST))
         print("Cost of MinST_pruned:", average_pairwise_distance_fast(minST_pruned))
         print("Cost of MaxST_pruned:", average_pairwise_distance_fast(maxST_pruned))
+    if visualize:
+        visualize_results(G, F, leafyT, leafyT_pruned, include_edge_weights=True)
 
     return min_solution
 
 
-def brute_force_search(G):
-    """
-
-    :param G:
-    :return:
-    """
-
-
-def maximally_leafy_forest(G, neighbor_sort=None):
+def maximally_leafy_forest(G, neighbor_sort=None, use_root_priority=False, alpha=1):
     """
     Computes the maximally leafy forest F for G
     A maximally leafy forest F is a set of disjointly "leafy" subtrees of G,
     where F is not a subgraph of any other leafy forest of G
-    :param G:
-    :param neighbor_sort:
+    :param G: input graph
+    :param neighbor_sort: order neighbors are added to subtree (None, "ascending", "descending", or "random")
+    :param use_root_priority:
+    :param alpha: hyperparameter for root priority (high alpha = higher priority for low average edge cost)
     :return: F networkx.Graph
              S disjoint subtrees
     """
-    F = nx.Graph()  # empty graph
+    # create graph with same nodes as G, but zero edges
+    F = nx.Graph()
     F.add_nodes_from(G.nodes)
 
     S = nx.utils.UnionFind()
@@ -93,8 +103,31 @@ def maximally_leafy_forest(G, neighbor_sort=None):
     for v in G.nodes:
         S[v]
 
-    # Branch from vertices with highest degree first
-    sorted_nodes = sorted(G.degree, key=lambda x: x[1], reverse=True)
+    def root_priority_heuristic(x, G, alpha):
+        """
+        Outputs the priority of choosing a vertex as the root of a subtree in the maximally leafy forest.
+        Build the maximally leafy forest using vertices with highest priority first
+        :param x: x is tuple (vertex, deg)
+        :param G: input graph
+        :param alpha: tunable hyperparameter
+        :return:
+        """
+        v = x[0]
+        deg = x[1]
+        average_edge_cost = 0
+        for u in G.neighbors(v):
+            average_edge_cost += G[u][v]['weight']
+        if deg != 0:
+            average_edge_cost = average_edge_cost / deg
+        priority = deg + alpha/average_edge_cost
+        return priority
+
+    if not use_root_priority:
+        # Branch from vertices with highest degree first
+        sorted_nodes = sorted(G.degree, key=lambda x: x[1], reverse=True)
+    else:
+        # Branch from vertices according to root priority heuristic
+        sorted_nodes = sorted(G.degree, key=lambda x: root_priority_heuristic(x, G, alpha), reverse=True)
 
     for v, deg in sorted_nodes:
         S_prime = {}
@@ -107,7 +140,7 @@ def maximally_leafy_forest(G, neighbor_sort=None):
             elif neighbor_sort is "descending":
                 neighbors = sorted(neighbors, key=lambda x: G[x][v]['weight'], reverse=True)
             elif neighbor_sort is "random":
-                neighbors = random.shuffle(neighbors)
+                random.shuffle(neighbors)
 
         for u in neighbors:
             if S[u] != S[v] and S[u] not in S_prime.values():
@@ -179,16 +212,13 @@ def prune_leaves(T, smart_pruning=True):
     return T_pruned
 
 
-def k_star(G):
-    """
-
-    :param G:
-    :return:
-    """
-    pass
+def visualize_graph(G):
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos=pos, with_labels=True)
+    nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=nx.get_edge_attributes(G, 'weight'))
 
 
-def visualize_results(G, F, T, T_pruned, include_edge_weights=False):
+def visualize_results(G, F, T, T_pruned, include_edge_weights=True):
     """
     Visualizes input graph and output tree side by side for easy comparison
 
@@ -196,26 +226,18 @@ def visualize_results(G, F, T, T_pruned, include_edge_weights=False):
     :param T: output Tree
     :return:
     """
-    if include_edge_weights is True:
+    if include_edge_weights:
         plt.subplot(141)
-        pos = nx.spring_layout(G)
-        nx.draw(G, pos=pos, with_labels=True)
-        nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=nx.get_edge_attributes(G, 'weight'))
+        visualize_graph(G)
 
         plt.subplot(142)
-        pos = nx.spring_layout(F)
-        nx.draw(F, pos=pos, with_labels=True)
-        nx.draw_networkx_edge_labels(F, pos=pos, edge_labels=nx.get_edge_attributes(F, 'weight'))
+        visualize_graph(F)
 
         plt.subplot(143)
-        pos = nx.spring_layout(T)
-        nx.draw(T, pos=pos, with_labels=True)
-        nx.draw_networkx_edge_labels(T, pos=pos, edge_labels=nx.get_edge_attributes(T, 'weight'))
+        visualize_graph(T)
 
         plt.subplot(144)
-        pos = nx.spring_layout(T_pruned)
-        nx.draw(T_pruned, pos=pos, with_labels=True)
-        nx.draw_networkx_edge_labels(T_pruned, pos=pos, edge_labels=nx.get_edge_attributes(T_pruned, 'weight'))
+        visualize_graph(T_pruned)
     else:
         plt.subplot(141)
         nx.draw(G, with_labels=True)
@@ -238,52 +260,47 @@ def visualize_results(G, F, T, T_pruned, include_edge_weights=False):
 # Usage: python3 solver.py test.in
 
 if __name__ == '__main__':
-    # assert len(sys.argv) == 2
-    # path = sys.argv[1]
 
     # Seed Random Datapoint Selection
     seed_val = 420
     random.seed(seed_val)
 
     generate_outputs = False
-    just_testing_single_graph = False
+    just_testing_single_graph = True
 
     if just_testing_single_graph:
         # path = "phase1_input_graphs\\25.in"
-        # path = "inputs\small-249.in"
-        path = "inputs\small-8.in"
+        path = "inputs\\medium-9.in"
         G = read_input_file(path)
         start_time = time.time()
-        T = solve(G, visualize=True, verbose=True)
+        T = solve(G, visualize=True, verbose=True, generate_alpha_plot=True)
         elapsed_time = time.time() - start_time
         assert is_valid_network(G, T)
         print('Total runtime:', elapsed_time, "(s)")
-        print("Average  pairwise distance: {}".format(average_pairwise_distance_fast(T)))
-        # write_output_file(T, 'out/test.out')
+        print("Average pairwise distance: {}".format(average_pairwise_distance_fast(T)))
+
     else:
         # output_dir = "experiment_outputs/test1"
         output_dir = "phase2_outputs"
         input_dir = "inputs"
+
+        start_time = time.time()
         pairwise_distances = np.array([])
+
         for input_path in os.listdir(input_dir):
             graph_name = input_path.split(".")[0]
             G = read_input_file(f"{input_dir}/{input_path}")
-
-            # Solve problem and time the elapsed time
-            start_time = time.time()
-            T = solve(G)
-            elapsed_time = time.time() - start_time
-
+            T, count = solve(G)
             assert is_valid_network(G, T)
 
             cost = average_pairwise_distance_fast(T)
             pairwise_distances = np.append(pairwise_distances, cost)
             print("Finished solving:", graph_name)
-            print('Total runtime:', elapsed_time, "(s)")
             print("Average pairwise distance: {}".format(cost), "\n")
 
             if generate_outputs:
                 write_output_file(T, f"{output_dir}/{graph_name}.out")
 
+        elapsed_time = time.time() - start_time
+        print('Total runtime:', elapsed_time, "(s)")
         print("Average Cost of all scores:", np.mean(pairwise_distances))
-        # TODO: write a save_to_csv function that saves a table of inputs and their runtime
