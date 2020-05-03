@@ -326,7 +326,7 @@ if __name__ == '__main__':
     test_single_graph = False           # True if testing only single input, False if testing ALL inputs
     generate_outputs = False            # True if generating outputs for submission
     track_solution_count = True         # True if keep track of solution type counter
-    alpha_range = np.arange(0, 10, 10)      # Range of alpha values to iterate over for hyperparameter tuning
+    alpha_range = np.arange(0, 3001, 5)      # Range of alpha values to iterate over for hyperparameter tuning
     ###########################################
 
     # Seed Random Datapoint Selection
@@ -355,10 +355,9 @@ if __name__ == '__main__':
 
         assert is_valid_network(G, T_parallel)
         assert is_valid_network(G, T)
-        # print('Total runtime:', elapsed_time, "(s)")
+
         print("Average pairwise distance (Parallel): {}".format(average_pairwise_distance_fast(T_parallel)))
         print("Average pairwise distance (Regular): {}".format(average_pairwise_distance_fast(T)))
-
 
     else:
         # output_dir = "experiment_outputs/test1"
@@ -386,7 +385,6 @@ if __name__ == '__main__':
         print('Total runtime:', elapsed_time, "(s)")
         print("Average Cost of all scores:", np.mean(pairwise_distances))
 
-    # global COUNT_LEAFYT, COUNT_MINST, COUNT_MAXST, COUNT_VC, COUNT_DS
     print("SOLUTION COUNTER:")
     print("LeafyT:", COUNT_LEAFYT, "MinST:", COUNT_MINST, "MaxST:", COUNT_MAXST, "VC:", COUNT_VC, "DS:", COUNT_DS)
     plt.show()
