@@ -17,6 +17,8 @@ Ensure that `solver.py`, \inputs, and \phase2_outputs are all in the root direct
 - \inputs should contains all of the input files
 - \phase2_outputs should be an empty directory, otherwise contents will be overwritten
 
+Set `alpha_range` = desired range of hyperparameters to optimize over (see docstring for details)
+
 ### Running the solver on a single graph:
 This runs the solver on a single graph, producing plots of the hyperparameter tuning, visualizing the graphs, and outputting the different costs and runtime.
 
