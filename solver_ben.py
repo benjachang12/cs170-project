@@ -184,6 +184,7 @@ def maximally_leafy_forest(G, neighbor_sort=None, use_root_priority=False, alpha
 def min_vertex_cover_spanning_tree(G):
     """
     Generate a min vertex cover approximation, then form minimum spanning tree of these nodes
+    Minimum vertex cover is from networkx's implementation, with an approximation ratio of 2
     :param G:
     :return:
     """
@@ -202,14 +203,20 @@ def min_vertex_cover_spanning_tree(G):
 def min_dominating_set_spanning_tree(G):
     """
     Generate a min dominating set approximation, then form minimum spanning tree of these nodes
+    Minimum dominating set is from networkx's implementation of minimum cardinality edge dominating set,
+    with an approximation ratio of 2
     :param G:
     :return:
     """
     minDS = nx.Graph()
-    minDS.add_nodes_from(approximation.min_weighted_dominating_set(G))
     S = nx.utils.UnionFind()
-    for v in minDS.nodes:
-        S[v]
+    edges_to_add = approximation.min_edge_dominating_set(G)
+
+    for e in edges_to_add:
+        u, v = e[0], e[1]
+        S.union(S[v], S[u])
+        minDS.add_edge(u, v, weight=G[u][v]['weight'])
+
     minDSST = connect_disjoint_subtrees(G, minDS, S)
     return minDSST
 
@@ -267,10 +274,24 @@ def prune_leaves(T, smart_pruning=True):
     return T_pruned
 
 
-def visualize_graph(G, title="untitled"):
+def visualize_graph(G, title="untitled", layout="spring_layout"):
+    """
+    Visualizes the graph using networkx's drawing tools (uses matplotlib)
+    :param G: input graph to draw
+    :param title: graph title
+    :param layout: layout type
+    :return:
+    """
     plt.figure()
     plt.title(title)
-    pos = nx.spring_layout(G)
+
+    if layout is "spring_layout":
+        pos = nx.spring_layout(G)
+    elif layout is "planar_layout":
+        pos = nx.planar_layout(G)
+    elif layout is "random_layout":
+        pos = nx.random_layout(G)
+
     nx.draw(G, pos=pos, with_labels=True)
     nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=nx.get_edge_attributes(G, 'weight'))
     plt.show(block=False)
@@ -296,7 +317,7 @@ if __name__ == '__main__':
 
     if test_single_graph:
         # path = "phase1_input_graphs\\25.in"
-        path = "inputs\\small-250.in"
+        path = "inputs\\small-25.in"
         G = read_input_file(path)
 
         # Parallel Solver
