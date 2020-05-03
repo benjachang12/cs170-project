@@ -48,7 +48,7 @@ def solve(G, alpha_range=np.arange(0, 1001, 10), verbose=False, parallel=False, 
     # Note: when alpha = 0, this is equivalent to no root priority heuristic
     def maximally_leafy_tree(alpha):
         F, S = maximally_leafy_forest(G, neighbor_sort="ascending", use_root_priority=True, alpha=alpha)
-        leafyT = connect_disjoint_subtrees(G, F, S)
+        leafyT, _ = connect_disjoint_subtrees(G, F, S)
         leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
         return leafyT_pruned
 
@@ -232,7 +232,12 @@ def min_vertex_cover_spanning_tree(G):
 
     G_subset = G.copy()
     G_subset.remove_nodes_from(G.nodes - minVC.nodes)
-    minVCST = connect_disjoint_subtrees(G_subset, minVC, S)
+    minVCST, S = connect_disjoint_subtrees(G_subset, minVC, S)
+
+    # Fix disconnected trees, can sometimes happen when G_subset is disconnected
+    if not nx.is_connected(minVCST):
+        minVCST, _ = connect_disjoint_subtrees(G, minVCST, S)
+
     return minVCST
 
 
@@ -256,7 +261,12 @@ def min_dominating_set_spanning_tree(G):
 
     G_subset = G.copy()
     G_subset.remove_nodes_from(G.nodes - minDS.nodes)
-    minDSST = connect_disjoint_subtrees(G_subset, minDS, S)
+    minDSST, S = connect_disjoint_subtrees(G_subset, minDS, S)
+
+    # Fix disconnected trees, can sometimes happen when G_subset is disconnected
+    if not nx.is_connected(minDSST):
+        minDSST, _ = connect_disjoint_subtrees(G, minDSST, S)
+
     return minDSST
 
 
@@ -288,9 +298,9 @@ def connect_disjoint_subtrees(G, F, S):
         if S[u] != S[v]:
             T.add_edge(u, v, weight=G[u][v]['weight'])
             S.union(u, v)
-            if T.number_of_edges() == G.number_of_nodes() - 1:
+            if T.number_of_edges() == T.number_of_nodes() - 1:
                 break
-    return T
+    return T, S
 
 
 def prune_leaves(T, smart_pruning=True):
@@ -345,7 +355,7 @@ if __name__ == '__main__':
     test_single_graph = False           # True if testing only single input, False if testing ALL inputs
     generate_outputs = False             # True if generating outputs for submission
     track_solution_count = True         # True if keep track of solution type counter
-    alpha_range = np.arange(0, 15, 5)      # Range of alpha values to iterate over for hyperparameter tuning
+    alpha_range = np.arange(0, 1, 5)      # Range of alpha values to iterate over for hyperparameter tuning
     ###########################################
 
     # Seed Random Datapoint Selection
@@ -353,7 +363,7 @@ if __name__ == '__main__':
     random.seed(seed_val)
 
     if test_single_graph:
-        path = "inputs\\small-25.in"
+        path = "inputs\\large-141.in"
         G = read_input_file(path)
 
         # Parallel Solver
