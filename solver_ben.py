@@ -1,4 +1,5 @@
 import networkx as nx
+from networkx.algorithms import approximation
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -69,6 +70,11 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False):
     all_costs.append(average_pairwise_distance_fast(minST_pruned))
     all_costs.append(average_pairwise_distance_fast(maxST_pruned))
 
+    # Generate min vertex cover spanning tree solution
+    minVCST = min_vertex_cover_spanning_tree(G)
+    all_solutions.append(minVCST)
+    all_costs.append(average_pairwise_distance_fast(minVCST))
+
     # Take the minimum over all these different approaches
     min_solution = all_solutions[all_costs.index(min(all_costs))]
 
@@ -80,13 +86,17 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False):
         print("Cost of leafyT_pruned:", average_pairwise_distance_fast(leafyT_pruned))
         print("Cost of MinST_pruned:", average_pairwise_distance_fast(minST_pruned))
         print("Cost of MaxST_pruned:", average_pairwise_distance_fast(maxST_pruned))
+        print("Cost of MinVCST:", average_pairwise_distance_fast(minVCST))
 
         # Visualize graphs of solutions
         visualize_graph(G, title="Input Graph")
         visualize_graph(leafyT_pruned, title="Pruned Leafy Tree")
         visualize_graph(minST_pruned, title="Pruned MinST")
         visualize_graph(maxST_pruned, title="Pruned MaxST")
+        visualize_graph(minVCST, title="MinVCST")
 
+    if min_solution == minVCST:
+        print("MINVCST!!!")
     return min_solution
 
 
@@ -164,6 +174,24 @@ def maximally_leafy_forest(G, neighbor_sort=None, use_root_priority=False, alpha
     return F, S
 
 
+def min_vertex_cover_spanning_tree(G):
+    """
+    Generate a min vertex cover approximation, then form minimum spanning tree of these nodes
+    :param G:
+    :return:
+    """
+    minVC = nx.Graph()
+    if G.number_of_nodes() == 1:
+        minVC.add_nodes_from(G.nodes)
+    else:
+        minVC.add_nodes_from(approximation.min_weighted_vertex_cover(G))
+    S = nx.utils.UnionFind()
+    for v in minVC.nodes:
+        S[v]
+    minVCST = connect_disjoint_subtrees(G, minVC, S)
+    return minVCST
+
+
 def connect_disjoint_subtrees(G, F, S):
     """
     Add edges to maximally leafy forest F to make it a spanning tree T of G
@@ -237,7 +265,7 @@ if __name__ == '__main__':
     ###########################################
     test_single_graph = False
     generate_outputs = False
-    alpha_range = np.arange(0, 100, 10)
+    alpha_range = np.arange(0, 10, 10)
 
 
     # Seed Random Datapoint Selection
@@ -246,7 +274,7 @@ if __name__ == '__main__':
 
     if test_single_graph:
         # path = "phase1_input_graphs\\25.in"
-        path = "inputs\\large-3.in"
+        path = "inputs\\small-254.in"
         G = read_input_file(path)
 
         # Parallel Solver
