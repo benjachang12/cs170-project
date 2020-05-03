@@ -2,7 +2,7 @@
 
 CS170 Spring 2020 Project
 
-Project spec can be found in spec.pdf
+Project spec can be found in `spec.pdf`
 
 Requirements:
 - networkx: https://networkx.github.io/documentation/stable/install.html
@@ -24,7 +24,7 @@ Modify main function in `solver.py`:
 - Set `test_single_graph` = True
 - Set `path` = input graph filepath (e.g. path = "inputs\\medium-9.in")
 
-Run: python solver.py
+Run: $ python solver.py
 
 ### Running the solver on a all inputs:
 This runs the solver on all input graph, outputting the cost of each graph, total runtime, and the average cost across all graphs.
@@ -34,6 +34,8 @@ Modify main function in `solver.py`:
 - Set `generating_outputs` = True (if you want to write outputs to output directory)
 - Set `generating_outputs` = False (if you don't want to save outputs)
 
+Run: $ python solver.py
+
 ## Submission Workflow
-Run: python prepare_submission.py phase2_outputs/ submission.json
+Run: $ python prepare_submission.py phase2_outputs/ submission.json
 
