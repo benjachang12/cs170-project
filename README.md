@@ -1,6 +1,6 @@
 # cs170-project
 
-CS170 Spring 2020 Project
+## CS170 Spring 2020 Project
 
 Project spec can be found in `spec.pdf`
 
