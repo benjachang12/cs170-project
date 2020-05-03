@@ -16,7 +16,7 @@ date: 4/29/2020
 """
 
 
-def solve(G, visualize=False, verbose=False, generate_alpha_plot=False):
+def solve(G, visualize=False, verbose=False, alpha_range=np.arange(0,1001,10), generate_alpha_plot=False):
     """
     Solves the problem statement by computing the minimum over the following possible solutions:
         - G (smart pruned)
@@ -39,7 +39,6 @@ def solve(G, visualize=False, verbose=False, generate_alpha_plot=False):
     leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
 
     # Generate leafyT solutions (with root priority heuristics and varying values of alpha)
-    alpha_range = np.arange(0,1001,10)   # range of alpha values to try
     all_solutions = []
     alpha_costs = []
     for alpha in alpha_range:
@@ -266,14 +265,15 @@ if __name__ == '__main__':
     random.seed(seed_val)
 
     generate_outputs = False
-    just_testing_single_graph = True
+    test_single_graph = True
+    alpha_range = np.arange(0, 1001, 10)
 
-    if just_testing_single_graph:
+    if test_single_graph:
         # path = "phase1_input_graphs\\25.in"
         path = "inputs\\medium-9.in"
         G = read_input_file(path)
         start_time = time.time()
-        T = solve(G, visualize=True, verbose=True, generate_alpha_plot=True)
+        T = solve(G, visualize=True, verbose=True, alpha_range=alpha_range, generate_alpha_plot=True)
         elapsed_time = time.time() - start_time
         assert is_valid_network(G, T)
         print('Total runtime:', elapsed_time, "(s)")
@@ -290,7 +290,7 @@ if __name__ == '__main__':
         for input_path in os.listdir(input_dir):
             graph_name = input_path.split(".")[0]
             G = read_input_file(f"{input_dir}/{input_path}")
-            T, count = solve(G)
+            T = solve(G, alpha_range=alpha_range)
             assert is_valid_network(G, T)
 
             cost = average_pairwise_distance_fast(T)
