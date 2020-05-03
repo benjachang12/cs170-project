@@ -52,6 +52,8 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False):
             all_costs.append(average_pairwise_distance_fast(sol))
             all_solutions.append(sol)
 
+    leafyT_pruned = all_solutions[0]
+
     if verbose:
         # Plot heuristic hyperparameter tuning graph
         plt.figure()
@@ -75,6 +77,11 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False):
     all_solutions.append(minVCST)
     all_costs.append(average_pairwise_distance_fast(minVCST))
 
+    # Generate min dominating set spanning tree solution
+    minDSST = min_dominating_set_spanning_tree(G)
+    all_solutions.append(minDSST)
+    all_costs.append(average_pairwise_distance_fast(minDSST))
+
     # Take the minimum over all these different approaches
     min_solution = all_solutions[all_costs.index(min(all_costs))]
 
@@ -87,6 +94,7 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False):
         print("Cost of MinST_pruned:", average_pairwise_distance_fast(minST_pruned))
         print("Cost of MaxST_pruned:", average_pairwise_distance_fast(maxST_pruned))
         print("Cost of MinVCST:", average_pairwise_distance_fast(minVCST))
+        print("Cost of MinDSST:", average_pairwise_distance_fast(minDSST))
 
         # Visualize graphs of solutions
         visualize_graph(G, title="Input Graph")
@@ -94,9 +102,8 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False):
         visualize_graph(minST_pruned, title="Pruned MinST")
         visualize_graph(maxST_pruned, title="Pruned MaxST")
         visualize_graph(minVCST, title="MinVCST")
+        visualize_graph(minDSST, title="MinDSST")
 
-    if min_solution == minVCST:
-        print("MINVCST!!!")
     return min_solution
 
 
@@ -192,6 +199,21 @@ def min_vertex_cover_spanning_tree(G):
     return minVCST
 
 
+def min_dominating_set_spanning_tree(G):
+    """
+    Generate a min dominating set approximation, then form minimum spanning tree of these nodes
+    :param G:
+    :return:
+    """
+    minDS = nx.Graph()
+    minDS.add_nodes_from(approximation.min_weighted_dominating_set(G))
+    S = nx.utils.UnionFind()
+    for v in minDS.nodes:
+        S[v]
+    minDSST = connect_disjoint_subtrees(G, minDS, S)
+    return minDSST
+
+
 def connect_disjoint_subtrees(G, F, S):
     """
     Add edges to maximally leafy forest F to make it a spanning tree T of G
@@ -263,7 +285,7 @@ if __name__ == '__main__':
     ###########################################
     #     Solver Settings (CHANGE ME)         #
     ###########################################
-    test_single_graph = False
+    test_single_graph = True
     generate_outputs = False
     alpha_range = np.arange(0, 10, 10)
 
@@ -274,7 +296,7 @@ if __name__ == '__main__':
 
     if test_single_graph:
         # path = "phase1_input_graphs\\25.in"
-        path = "inputs\\small-254.in"
+        path = "inputs\\small-250.in"
         G = read_input_file(path)
 
         # Parallel Solver
