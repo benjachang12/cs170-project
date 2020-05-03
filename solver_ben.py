@@ -218,7 +218,6 @@ def connect_disjoint_subtrees(G, F, S):
             S.union(u, v)
             if T.number_of_edges() == G.number_of_nodes() - 1:
                 break
-
     return T
 
 
@@ -231,7 +230,6 @@ def prune_leaves(T, smart_pruning=True):
     """
 
     T_pruned = T.copy()
-
     for v in T.nodes:
         if T.degree[v] == 1 and T_pruned.number_of_nodes() > 1:
             if smart_pruning is False:
@@ -241,7 +239,6 @@ def prune_leaves(T, smart_pruning=True):
                 T_pruned_check.remove_node(v)
                 if average_pairwise_distance_fast(T_pruned_check) < average_pairwise_distance_fast(T_pruned):
                     T_pruned.remove_node(v)
-
     return T_pruned
 
 
