@@ -27,46 +27,42 @@ def solve(G, visualize=False, verbose=False, alpha_range=np.arange(0,1001,10), g
     :return: T networkx.Graph
     """
 
-    # Generate minST and maxST solutions
+    # Generate leafyT solutions (with root priority heuristics and varying values of alpha)
+    # Note: when alpha = 0, this is equivalent to no root priority heuristic
+    all_solutions = []
+    alpha_costs = []
+    for alpha in reversed(alpha_range):
+        F, S = maximally_leafy_forest(G, neighbor_sort="ascending", use_root_priority=True, alpha=alpha)
+        leafyT = connect_disjoint_subtrees(G, F, S)
+        leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
+        if generate_alpha_plot:
+            alpha_costs.append(average_pairwise_distance_fast(leafyT_pruned))
+        all_solutions.append(leafyT_pruned)
+
+    if generate_alpha_plot:
+        alpha_costs.reverse()
+        plt.figure()
+        plt.plot(alpha_range, alpha_costs)
+        plt.xlabel("alpha"), plt.ylabel("Cost")
+        plt.title("Cost vs Alpha (neighbors sorted ascending)")
+        plt.show(block=False)
+
+    # Generate pruned minST and maxST solutions
     minST = nx.minimum_spanning_tree(G)
     maxST = nx.maximum_spanning_tree(G)
     minST_pruned = prune_leaves(minST, smart_pruning=True)
     maxST_pruned = prune_leaves(maxST, smart_pruning=True)
-
-    # Generate leafyT solution (without using root priority heuristic)
-    F, S = maximally_leafy_forest(G, neighbor_sort="ascending")
-    leafyT = connect_disjoint_subtrees(G, F, S)
-    leafyT_pruned = prune_leaves(leafyT, smart_pruning=True)
-
-    # Generate leafyT solutions (with root priority heuristics and varying values of alpha)
-    all_solutions = []
-    alpha_costs = []
-    for alpha in alpha_range:
-        F_alpha, S_alpha = maximally_leafy_forest(G, neighbor_sort="ascending", use_root_priority=True, alpha=alpha)
-        leafyT_alpha = connect_disjoint_subtrees(G, F_alpha, S_alpha)
-        leafyT_alpha_pruned = prune_leaves(leafyT_alpha, smart_pruning=True)
-
-        if generate_alpha_plot:
-            alpha_costs.append(average_pairwise_distance_fast(leafyT_alpha_pruned))
-
-        all_solutions.append(leafyT_alpha_pruned)
-
-    if generate_alpha_plot:
-        plt.plot(alpha_range, alpha_costs)
-        plt.xlabel("alpha"), plt.ylabel("Cost")
-        plt.title("Cost vs Alpha (neighbors sorted ascending)")
-        plt.show()
-
-    # Take the minimum over all these different approaches
-    all_solutions.append(leafyT_pruned)
     all_solutions.append(minST_pruned)
     all_solutions.append(maxST_pruned)
+
+    # Take the minimum over all these different approaches
     all_costs = []
     for solution in all_solutions:
         all_costs.append(average_pairwise_distance_fast(solution))
     min_solution = all_solutions[all_costs.index(min(all_costs))]
 
-    # visualize and compare results
+    # Visualize and compare results
+    # Note this only shows the last leafyT (which is when alpha=0)
     if verbose:
         print("Cost of G:", average_pairwise_distance_fast(G))
         print("Cost of leafyT:", average_pairwise_distance_fast(leafyT))
@@ -76,7 +72,12 @@ def solve(G, visualize=False, verbose=False, alpha_range=np.arange(0,1001,10), g
         print("Cost of MinST_pruned:", average_pairwise_distance_fast(minST_pruned))
         print("Cost of MaxST_pruned:", average_pairwise_distance_fast(maxST_pruned))
     if visualize:
-        visualize_results(G, F, leafyT, leafyT_pruned, include_edge_weights=True)
+        visualize_graph(G, title="Input Graph")
+        visualize_graph(F, title="Leafy Forest")
+        visualize_graph(leafyT, title="Leafy Tree")
+        visualize_graph(leafyT_pruned, title="Pruned Leafy Tree")
+        visualize_graph(minST_pruned, title="Pruned MinST")
+        visualize_graph(maxST_pruned, title="Pruned MaxST")
 
     return min_solution
 
@@ -211,47 +212,13 @@ def prune_leaves(T, smart_pruning=True):
     return T_pruned
 
 
-def visualize_graph(G):
+def visualize_graph(G, title="untitled"):
+    plt.figure()
+    plt.title(title)
     pos = nx.spring_layout(G)
     nx.draw(G, pos=pos, with_labels=True)
     nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=nx.get_edge_attributes(G, 'weight'))
-
-
-def visualize_results(G, F, T, T_pruned, include_edge_weights=True):
-    """
-    Visualizes input graph and output tree side by side for easy comparison
-
-    :param G: input Graph
-    :param T: output Tree
-    :return:
-    """
-    if include_edge_weights:
-        plt.subplot(141)
-        visualize_graph(G)
-
-        plt.subplot(142)
-        visualize_graph(F)
-
-        plt.subplot(143)
-        visualize_graph(T)
-
-        plt.subplot(144)
-        visualize_graph(T_pruned)
-    else:
-        plt.subplot(141)
-        nx.draw(G, with_labels=True)
-        plt.subplot(142)
-        nx.draw(F, with_labels=True)
-        plt.subplot(143)
-        nx.draw(T, with_labels=True)
-        plt.subplot(144)
-        nx.draw(T_pruned, with_labels=True)
-
-    plt.subplot(141).set_title('Graph')
-    plt.subplot(142).set_title('Forest')
-    plt.subplot(143).set_title('Tree')
-    plt.subplot(144).set_title('Pruned Tree')
-    plt.show()
+    plt.show(block=False)
 
 
 # Here's an example of how to run your solver.
@@ -260,13 +227,17 @@ def visualize_results(G, F, T, T_pruned, include_edge_weights=True):
 
 if __name__ == '__main__':
 
+    ###########################################
+    #     Solver Settings (CHANGE ME)         #
+    ###########################################
+    test_single_graph = False
+    generate_outputs = True
+    alpha_range = np.arange(0, 100, 10)
+
+
     # Seed Random Datapoint Selection
     seed_val = 420
     random.seed(seed_val)
-
-    generate_outputs = False
-    test_single_graph = True
-    alpha_range = np.arange(0, 1001, 10)
 
     if test_single_graph:
         # path = "phase1_input_graphs\\25.in"
@@ -278,6 +249,7 @@ if __name__ == '__main__':
         assert is_valid_network(G, T)
         print('Total runtime:', elapsed_time, "(s)")
         print("Average pairwise distance: {}".format(average_pairwise_distance_fast(T)))
+        plt.show()
 
     else:
         # output_dir = "experiment_outputs/test1"
