@@ -232,7 +232,7 @@ def min_vertex_cover_spanning_tree(G):
 
     G_subset = G.copy()
     G_subset.remove_nodes_from(G.nodes - minVC.nodes)
-    minVCST = connect_disjoint_subtrees(G, minVC, S)
+    minVCST = connect_disjoint_subtrees(G_subset, minVC, S)
     return minVCST
 
 
@@ -343,9 +343,9 @@ if __name__ == '__main__':
     #     Solver Settings (CHANGE ME)         #
     ###########################################
     test_single_graph = False           # True if testing only single input, False if testing ALL inputs
-    generate_outputs = True             # True if generating outputs for submission
+    generate_outputs = False             # True if generating outputs for submission
     track_solution_count = True         # True if keep track of solution type counter
-    alpha_range = np.arange(0, 3001, 5)      # Range of alpha values to iterate over for hyperparameter tuning
+    alpha_range = np.arange(0, 15, 5)      # Range of alpha values to iterate over for hyperparameter tuning
     ###########################################
 
     # Seed Random Datapoint Selection
