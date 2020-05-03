@@ -19,7 +19,7 @@ authors: Benjamin Chang, Kelvin Pang
 date: 4/29/2020
 """
 
-# Counter Global Variables
+# Solution Counter global variables
 COUNT_LEAFYT = 0
 COUNT_MINST = 0
 COUNT_MAXST = 0
@@ -27,18 +27,24 @@ COUNT_VC = 0
 COUNT_DS = 0
 
 
-def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False, count=False):
+def solve(G, alpha_range=np.arange(0, 1001, 10), verbose=False, parallel=False, count=False):
     """
     Solves the problem statement by computing the minimum over the following possible solutions:
-        - G (smart pruned)
-        - Maximum Spanning Tree (smart pruned)
-        - Minimum Spanning Tree (smart pruned)
-        -
-    :param G: networkx.Graph
-    :return: T networkx.Graph
+    - Maximally Leafy Tree (smart pruned, best heuristic)
+    - Minimum Spanning Tree (smart pruned)
+    - Maximum Spanning Tree (smart pruned)
+    - Minimum Vertex Cover Spanning Tree
+    - Minimum Edge Dominating Set Spanning Tree
+
+    :param G:           input graph (networkx.Graph)
+    :param alpha_range: range of alpha values to optimize over
+    :param verbose:     enable verbose outputs
+    :param parallel:    enable parallelization over alpha values
+    :param count:       enable solution count tracking
+    :return:            min cost solution (networkx.Graph)
     """
 
-    # Generate leafyT solutions (with root priority heuristics and varying values of alpha)
+    # Generate pruned leafyT solutions (with root priority heuristics and varying values of alpha)
     # Note: when alpha = 0, this is equivalent to no root priority heuristic
     def maximally_leafy_tree(alpha):
         F, S = maximally_leafy_forest(G, neighbor_sort="ascending", use_root_priority=True, alpha=alpha)
@@ -48,7 +54,6 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False, co
 
     all_solutions = []
     all_costs = []
-
     if parallel:
         num_cores = multiprocessing.cpu_count()
         all_solutions = Parallel(n_jobs=num_cores)(delayed(maximally_leafy_tree)(alpha) for alpha in alpha_range)
@@ -58,8 +63,6 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False, co
             sol = maximally_leafy_tree(alpha)
             all_costs.append(average_pairwise_distance_fast(sol))
             all_solutions.append(sol)
-
-    leafyT_pruned = all_solutions[0]
 
     if verbose:
         # Plot heuristic hyperparameter tuning graph
@@ -128,22 +131,30 @@ def solve(G, alpha_range=np.arange(0,1001,10), verbose=False, parallel=False, co
     return min_solution
 
 
-def maximally_leafy_forest(G, neighbor_sort=None, use_root_priority=False, alpha=1):
+def maximally_leafy_forest(G, neighbor_sort=None, use_root_priority=False, alpha=0):
     """
     Computes the maximally leafy forest F for G
-    A maximally leafy forest F is a set of disjointly "leafy" subtrees of G,
-    where F is not a subgraph of any other leafy forest of G
-    :param G: input graph
-    :param neighbor_sort: order neighbors are added to subtree (None, "ascending", "descending", or "random")
-    :param use_root_priority:
-    :param alpha: hyperparameter for root priority (high alpha = higher priority for low average edge cost)
-    :return: F networkx.Graph
-             S disjoint subtrees
+    - A maximally leafy forest F is a set of disjointly "leafy" subtrees of G,
+    - where F is not a subgraph of any other leafy forest of G.
+
+    This algorithm directly follows from the maximally leafy forest algorithm presented by Lu et al, but with
+    the following notable changes:
+    - We choose the disjoint subtree roots according to a tunable priority heuristic
+    - We grow the subtrees by adding neighbors in ascending edge weight order
+
+    :param G:                   input graph (networkx.Graph)
+    :param neighbor_sort:       order neighbors are added to subtree (None, "ascending", "descending", or "random")
+    :param use_root_priority:   enable root priority heuristic
+    :param alpha:               tunable hyperparameter for root priority
+    :return: F is networkx.Graph of maximally leafy forest (disjoint subtrees)
+             S is networkx.UnionFind to track disjoint subtrees
     """
+
     # create graph with same nodes as G, but zero edges
     F = nx.Graph()
     F.add_nodes_from(G.nodes)
 
+    # Initialize disjoint sets and degrees
     S = nx.utils.UnionFind()
     d = np.zeros(len(G.nodes))
     for v in G.nodes:
@@ -153,10 +164,10 @@ def maximally_leafy_forest(G, neighbor_sort=None, use_root_priority=False, alpha
         """
         Outputs the priority of choosing a vertex as the root of a subtree in the maximally leafy forest.
         Build the maximally leafy forest using vertices with highest priority first
-        :param x: x is tuple (vertex, deg)
-        :param G: input graph
-        :param alpha: tunable hyperparameter
-        :return:
+        :param x:       x is tuple (vertex, deg)
+        :param G:       input graph (networkx.Graph)
+        :param alpha:   tunable hyperparameter (high alpha = higher priority for low average edge cost)
+        :return:        priority of vertex to be used as root
         """
         v = x[0]
         deg = x[1]
@@ -180,6 +191,7 @@ def maximally_leafy_forest(G, neighbor_sort=None, use_root_priority=False, alpha
         d_prime = 0
         neighbors = list(G.neighbors(v))
 
+        # Choose order of neighbors to grow subtree with
         if neighbor_sort is not None:
             if neighbor_sort is "ascending":
                 neighbors = sorted(neighbors, key=lambda x: G[x][v]['weight'])
@@ -188,6 +200,7 @@ def maximally_leafy_forest(G, neighbor_sort=None, use_root_priority=False, alpha
             elif neighbor_sort is "random":
                 random.shuffle(neighbors)
 
+        # Grow subtree
         for u in neighbors:
             if S[u] != S[v] and S[u] not in S_prime.values():
                 d_prime = d_prime + 1
@@ -198,7 +211,6 @@ def maximally_leafy_forest(G, neighbor_sort=None, use_root_priority=False, alpha
                 S.union(S[v], S[u])
                 d[u] = d[u] + 1
                 d[v] = d[v] + 1
-
     return F, S
 
 
@@ -206,8 +218,8 @@ def min_vertex_cover_spanning_tree(G):
     """
     Generate a min vertex cover approximation, then form minimum spanning tree of these nodes
     Minimum vertex cover is from networkx's implementation, with an approximation ratio of 2
-    :param G:
-    :return:
+    :param G:   input graph (networkx.Graph)
+    :return:    minimum vertex cover spanning tree (networkx.Graph)
     """
     minVC = nx.Graph()
     if G.number_of_nodes() == 1:
@@ -217,6 +229,9 @@ def min_vertex_cover_spanning_tree(G):
     S = nx.utils.UnionFind()
     for v in minVC.nodes:
         S[v]
+
+    G_subset = G.copy()
+    G_subset.remove_nodes_from(G.nodes - minVC.nodes)
     minVCST = connect_disjoint_subtrees(G, minVC, S)
     return minVCST
 
@@ -226,8 +241,8 @@ def min_dominating_set_spanning_tree(G):
     Generate a min dominating set approximation, then form minimum spanning tree of these nodes
     Minimum dominating set is from networkx's implementation of minimum cardinality edge dominating set,
     with an approximation ratio of 2
-    :param G:
-    :return:
+    :param G:   input graph (networkx.Graph)
+    :return:    output minimum edge dominating set spanning tree (networkx.Graph)
     """
     minDS = nx.Graph()
     if G.number_of_nodes() == 1:
@@ -238,18 +253,22 @@ def min_dominating_set_spanning_tree(G):
         u, v = e[0], e[1]
         S.union(S[v], S[u])
         minDS.add_edge(u, v, weight=G[u][v]['weight'])
-    minDSST = connect_disjoint_subtrees(G, minDS, S)
+
+    G_subset = G.copy()
+    G_subset.remove_nodes_from(G.nodes - minDS.nodes)
+    minDSST = connect_disjoint_subtrees(G_subset, minDS, S)
     return minDSST
 
 
 def connect_disjoint_subtrees(G, F, S):
     """
     Add edges to maximally leafy forest F to make it a spanning tree T of G
-    :param G:
-    :param F:
-    :param S:
-    :return: T
+    :param G:   original input graph (networkx.Graph)
+    :param F:   graph of disjoint components to connect (networkx.Graph)
+    :param S:   set to track connected components (networkx.UnionFind)
+    :return: T is spanning tree of the subtrees (CCs) of F
     """
+
     edges_difference = G.edges() - F.edges()
 
     # remove edges that connect vertices from same disjoint subtree
@@ -277,9 +296,9 @@ def connect_disjoint_subtrees(G, F, S):
 def prune_leaves(T, smart_pruning=True):
     """
     Greedily prunes the leaves of tree T ONLY if it reduces the average pairwise distance
-    :param T:
-    :param smart_pruning:
-    :return:
+    :param T:               input tree to prune leaves
+    :param smart_pruning:   if False then prunes ALL leaves
+    :return: T_pruned is pruned tree
     """
 
     T_pruned = T.copy()
@@ -298,9 +317,9 @@ def prune_leaves(T, smart_pruning=True):
 def visualize_graph(G, title="untitled", layout="spring_layout"):
     """
     Visualizes the graph using networkx's drawing tools (uses matplotlib)
-    :param G: input graph to draw
-    :param title: graph title
-    :param layout: layout type
+    :param G:       input graph to draw
+    :param title:   graph title
+    :param layout:  layout type (see networkx graph draw layouts)
     :return:
     """
     plt.figure()
@@ -324,7 +343,7 @@ if __name__ == '__main__':
     #     Solver Settings (CHANGE ME)         #
     ###########################################
     test_single_graph = False           # True if testing only single input, False if testing ALL inputs
-    generate_outputs = False            # True if generating outputs for submission
+    generate_outputs = True             # True if generating outputs for submission
     track_solution_count = True         # True if keep track of solution type counter
     alpha_range = np.arange(0, 3001, 5)      # Range of alpha values to iterate over for hyperparameter tuning
     ###########################################
@@ -334,7 +353,6 @@ if __name__ == '__main__':
     random.seed(seed_val)
 
     if test_single_graph:
-        # path = "phase1_input_graphs\\25.in"
         path = "inputs\\small-25.in"
         G = read_input_file(path)
 
@@ -355,12 +373,10 @@ if __name__ == '__main__':
 
         assert is_valid_network(G, T_parallel)
         assert is_valid_network(G, T)
-
         print("Average pairwise distance (Parallel): {}".format(average_pairwise_distance_fast(T_parallel)))
         print("Average pairwise distance (Regular): {}".format(average_pairwise_distance_fast(T)))
 
     else:
-        # output_dir = "experiment_outputs/test1"
         output_dir = "phase2_outputs"
         input_dir = "inputs"
 
