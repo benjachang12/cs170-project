@@ -32,7 +32,7 @@ Modify main function in `solver.py`:
 
 Run: $ python solver.py
 
-### Running the solver on a all inputs:
+### Running the solver on all inputs:
 This runs the solver on all input graph, outputting the cost of each graph, total runtime, and the average cost across all graphs.
 
 Modify main function in `solver.py`:
@@ -44,6 +44,7 @@ Run: $ python solver.py
 
 ## Submission Workflow
 Instructions: https://docs.google.com/document/d/1qDXO1O4dv6QQ_sk6J8aJCUbXScjzNBniiPDUojbyy7A/edit
+
 Run: $ python prepare_submission.py phase2_outputs/ submission.json
 
 ### Project Leaderboard
